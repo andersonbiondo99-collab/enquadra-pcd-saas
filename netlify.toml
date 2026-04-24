@@ -1,0 +1,7 @@
+[build]
+  command = "npm run netlify:prepare"
+  publish = "."
+
+[build.environment]
+  NODE_VERSION = "20"
+  NETLIFY_BACKEND_URL = "https://enquadra-pcd-saas.onrender.com"

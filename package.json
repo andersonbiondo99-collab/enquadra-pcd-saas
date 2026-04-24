@@ -1,0 +1,14 @@
+{
+  "name": "enquadra-pcd",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Sistema web para enquadramento PcD com controle de acesso",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "netlify:prepare": "node scripts/prepare-netlify.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

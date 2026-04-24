@@ -1,0 +1,2093 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="davicore-app-origin" content="https://enquadra-pcd-saas.onrender.com">
+  <title>DaviCore Health | Planos e acesso profissional</title>
+  <link rel="stylesheet" href="style.css?v=20260421d">
+</head>
+<body>
+  <div class="auth-shell" id="authShell">
+    <section class="auth-hero">
+      <div class="auth-brand">
+        <div class="auth-brand-lockup">
+          <img class="auth-logo" src="img/logo.png" alt="DaviCore Health">
+          <div class="auth-brand-copy">
+            <div class="auth-brand-title-row">
+              <strong class="auth-brand-title">DaviCore Health</strong>
+              <span class="auth-brand-ribbon">Occupational Health Tech</span>
+            </div>
+            <p class="auth-brand-subtitle">Plataforma corporativa para apoio t&eacute;cnico em caracteriza&ccedil;&atilde;o de PCD e opera&ccedil;&atilde;o ocupacional respons&aacute;vel.</p>
+          </div>
+        </div>
+        <div class="auth-brand-actions">
+          <button class="ghost-button" type="button" id="heroLoginButton">Entrar</button>
+        </div>
+      </div>
+
+      <section class="sales-landing" id="salesLanding">
+        <div class="sales-hero">
+          <div class="sales-hero-copy">
+            <span class="sales-brand-chip">Plataforma profissional</span>
+            <h3>Tecnologia para apoio &agrave; caracteriza&ccedil;&atilde;o de PCD com seguran&ccedil;a e responsabilidade profissional</h3>
+            <p>Sistema inteligente para apoio t&eacute;cnico na descri&ccedil;&atilde;o funcional, desenvolvido para uso por profissionais de sa&uacute;de e empresas.</p>
+            <div class="sales-hero-actions">
+              <button class="primary-button sales-primary-button" type="button" id="heroPlansButton">Conhecer planos</button>
+            </div>
+          </div>
+          <div class="sales-hero-panel">
+            <div class="hero-insight-visual" id="heroInsightVisual" aria-hidden="true">
+              <span class="hero-insight-chip">Vis&atilde;o do produto</span>
+              <strong class="hero-insight-title" id="heroInsightTitle">Triagem guiada por tipo de defici&ecirc;ncia</strong>
+              <p class="hero-insight-text" id="heroInsightText">Campos mais objetivos, menos retrabalho e descri&ccedil;&otilde;es t&eacute;cnicas conduzidas pelo pr&oacute;prio sistema.</p>
+              <div class="hero-insight-dots" id="heroInsightDots">
+                <span class="hero-insight-dot is-active"></span>
+                <span class="hero-insight-dot"></span>
+                <span class="hero-insight-dot"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <section class="support-explainer">
+          <div class="support-explainer-head">
+            <span class="section-step">Como contratar</span>
+            <h3>Fluxo comercial claro, suporte direto e contrata&ccedil;&atilde;o sem confus&atilde;o</h3>
+          </div>
+          <div class="support-explainer-grid">
+            <article class="support-detail-card">
+              <strong>Plano Empresarial</strong>
+              <p>Contrata&ccedil;&atilde;o por 3, 6 ou 12 meses, com dashboard administrativo, gest&atilde;o de m&eacute;dicos vinculados e indicadores de uso.</p>
+            </article>
+            <article class="support-detail-card">
+              <strong>Plano M&eacute;dico</strong>
+              <p>Modelo flex&iacute;vel com assinatura recorrente mensal de 30 laudos ou pacotes avulsos, sempre com valida&ccedil;&atilde;o de CRM e responsabilidade t&eacute;cnica vinculada ao m&eacute;dico autenticado.</p>
+            </article>
+            <article class="support-detail-card">
+              <strong>Modo Demonstra&ccedil;&atilde;o</strong>
+              <p>Apresenta a navega&ccedil;&atilde;o da plataforma de forma guiada, sem emiss&atilde;o, sem assinatura e sem validade jur&iacute;dica.</p>
+            </article>
+          </div>
+        </section>
+
+        <section class="modern-plans" id="modernPlans">
+          <div class="pricing-preview-head">
+            <span class="section-step">Planos</span>
+            <h3>Escolha o perfil de contrata&ccedil;&atilde;o adequado ao seu uso</h3>
+          </div>
+
+          <div class="pricing-cards">
+            <article class="offer-card">
+              <div class="offer-card-head">
+                <span class="offer-chip">Empresarial</span>
+                <h4>Plano Empresarial</h4>
+                <p class="offer-price">Assinatura por per&iacute;odo</p>
+              </div>
+              <p>Solu&ccedil;&atilde;o administrativa para empresas com gest&atilde;o de m&eacute;dicos, m&eacute;tricas de uso e controle corporativo.</p>
+              <ul class="offer-list">
+                <li>Contrata&ccedil;&atilde;o por 3 meses</li>
+                <li>Contrata&ccedil;&atilde;o por 6 meses</li>
+                <li>Contrata&ccedil;&atilde;o por 12 meses</li>
+                <li>Dashboard administrativo corporativo</li>
+                <li>Gest&atilde;o de m&eacute;dicos vinculados</li>
+                <li>Sem emiss&atilde;o ou assinatura de documentos</li>
+              </ul>
+              <button class="primary-button plan-action-button" type="button" id="companyPlanButton">Contratar plano</button>
+            </article>
+
+            <article class="offer-card featured">
+              <div class="offer-card-head">
+                <span class="offer-chip success">M&eacute;dico</span>
+                <h4>Plano M&eacute;dico</h4>
+                <p class="offer-subtitle">Exclusivo para m&eacute;dicos com CRM v&aacute;lido</p>
+                <p class="offer-price">Assinatura mensal ou pacote avulso</p>
+              </div>
+              <p>Exclusivo para m&eacute;dicos com CRM v&aacute;lido. Escolha entre assinatura recorrente com 30 laudos por m&ecirc;s ou pacotes avulsos por volume.</p>
+              <ul class="offer-list">
+                <li>Assinatura recorrente com 30 laudos mensais</li>
+                <li>Pacote avulso com 10 documentos</li>
+                <li>Pacote avulso com 25 documentos</li>
+                <li>Pacote avulso com 50 documentos</li>
+                <li>Valida&ccedil;&atilde;o obrigat&oacute;ria de CRM</li>
+              </ul>
+              <button class="primary-button plan-action-button" type="button" id="doctorPlanButton">Sou m&eacute;dico &mdash; contratar plano</button>
+            </article>
+
+            <article class="offer-card">
+              <div class="offer-card-head">
+                <span class="offer-chip neutral">Demo</span>
+                <h4>Modo Demonstra&ccedil;&atilde;o</h4>
+                <p class="offer-price offer-price-free">Acesso guiado e limitado</p>
+              </div>
+              <p>Explore a plataforma com uma visita guiada e sem emiss&atilde;o de documentos.</p>
+              <ul class="offer-list">
+                <li>Sem validade jur&iacute;dica</li>
+                <li>Sem assinatura</li>
+                <li>Sem conclus&atilde;o documental</li>
+                <li>Uso apenas para demonstra&ccedil;&atilde;o</li>
+              </ul>
+              <button class="ghost-button plan-action-button" type="button" id="demoPlanButton">Testar demonstra&ccedil;&atilde;o</button>
+            </article>
+          </div>
+
+          <div class="plan-grid public-plan-grid" id="publicPlanGrid"></div>
+        </section>
+
+        <section class="feature-comparison">
+          <div class="pricing-preview-head">
+            <span class="section-step">Comparativo</span>
+            <h3>Fun&ccedil;&otilde;es dispon&iacute;veis por perfil</h3>
+          </div>
+          <div class="comparison-table-wrap">
+            <table class="comparison-table">
+              <thead>
+                <tr>
+                  <th>Fun&ccedil;&atilde;o</th>
+                  <th>Empresa</th>
+                  <th>M&eacute;dico</th>
+                  <th>Demo</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>Dashboard administrativo</td><td>&#10004;</td><td>&#10060;</td><td>&#10060;</td></tr>
+                <tr><td>Gest&atilde;o de m&eacute;dicos</td><td>&#10004;</td><td>&#10060;</td><td>&#10060;</td></tr>
+                <tr><td>Acesso t&eacute;cnico aos m&oacute;dulos</td><td>&#10060;</td><td>&#10004;</td><td>&#10060;</td></tr>
+                <tr><td>Concluir documento</td><td>&#10060;</td><td>&#10004;</td><td>&#10060;</td></tr>
+                <tr><td>Assinar</td><td>&#10060;</td><td>&#10004;</td><td>&#10060;</td></tr>
+                <tr><td>Validade jur&iacute;dica</td><td>&#10060;</td><td>&#10004;</td><td>&#10060;</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="legal-highlight" id="pricingLegalWarning">
+          <div class="legal-highlight-icon">&#9888;</div>
+          <div class="legal-highlight-body">
+            <strong>IMPORTANTE</strong>
+            <p>O DaviCore Health &eacute; um sistema de apoio t&eacute;cnico e n&atilde;o realiza diagn&oacute;stico m&eacute;dico.</p>
+            <p>A emiss&atilde;o de documentos com validade profissional exige m&eacute;dico legalmente habilitado, com CRM v&aacute;lido e responsabilidade t&eacute;cnica assumida.</p>
+            <p>Empresas acessam exclusivamente o dashboard administrativo para gerir m&eacute;dicos, indicadores e uso do sistema, sem emiss&atilde;o ou assinatura de documentos.</p>
+            <p>O uso indevido da plataforma &eacute; de responsabilidade exclusiva do usu&aacute;rio.</p>
+          </div>
+        </section>
+
+        <section class="professional-contact" id="professionalContactCard">
+          <div class="professional-contact-card">
+            <img class="professional-contact-avatar" src="img/foto.png" alt="Foto profissional em fundo claro, com jaleco branco e postura confiante.">
+            <div class="professional-contact-body">
+              <span class="section-step">Contato direto</span>
+              <h3>Atendimento comercial profissional</h3>
+              <p>Enfermeiro em forma&ccedil;&atilde;o, movido pela sa&uacute;de ocupacional e fascinado por transformar ideias em automa&ccedil;&otilde;es e c&oacute;digos inteligentes.</p>
+              <div class="professional-contact-links">
+                <a class="support-contact-link" href="mailto:andersonbiondo99@gmail.com">andersonbiondo99@gmail.com</a>
+                <a class="support-contact-link" href="https://wa.me/5549999424611" target="_blank" rel="noreferrer">(49) 9 9942-4611</a>
+              </div>
+            </div>
+          </div>
+        </section>
+      </section>
+    </section>
+
+    <section class="auth-card" id="authPanel">
+      <div class="auth-card-head">
+        <button class="ghost-button auth-panel-close" type="button" id="authPanelClose" aria-label="Fechar tela de acesso">&times;</button>
+        <span class="section-step" id="authModeBadge">Escolha o perfil</span>
+        <h3 id="authTitle">Selecione o tipo de acesso</h3>
+        <p id="authDescription">Defina se a entrada será como empresa usuária do sistema ou como administrador da plataforma.</p>
+      </div>
+
+      <div class="auth-access-grid" id="authAccessGrid">
+        <button class="access-choice-card is-active" type="button" id="accessBuyerButton">
+          <strong>Entrar com conta contratada</strong>
+          <span>Empresas acessam o dashboard administrativo e m&eacute;dicos autenticados acessam a &aacute;rea t&eacute;cnica conforme o perfil.</span>
+        </button>
+
+        <button class="access-choice-card" type="button" id="accessAdminButton">
+          <strong>Entrar como administrador</strong>
+          <span>Painel interno para clientes, pagamentos, renova&ccedil;&otilde;es, acessos e configura&ccedil;&otilde;es da plataforma.</span>
+        </button>
+      </div>
+
+      <form id="loginForm" class="auth-form" novalidate>
+        <label class="field">
+          <span>Usuário</span>
+          <input type="text" id="loginUsername" autocomplete="username" placeholder="Usuário ou e-mail">
+        </label>
+
+        <label class="field">
+          <span>Senha</span>
+          <input type="password" id="loginPassword" autocomplete="current-password" placeholder="Senha de acesso">
+        </label>
+
+        <div class="form-actions">
+          <button class="primary-button" type="submit" id="loginSubmitButton">Entrar</button>
+          <button class="ghost-button" type="button" id="showRegisterButton">Ver planos</button>
+          <button class="ghost-button hidden" type="button" id="showSetupButton">Configurar administrador</button>
+        </div>
+      </form>
+
+      <form id="registerForm" class="auth-form hidden" novalidate>
+        <input type="hidden" id="registerJourneyType" value="company">
+
+        <div class="journey-note" id="registerJourneyNote">
+          Cadastro empresarial com dashboard administrativo, gest&atilde;o de m&eacute;dicos vinculados, indicadores de uso e controle corporativo sem emiss&atilde;o documental.
+        </div>
+        <label class="field">
+          <span id="registerCompanyLabel">Empresa</span>
+          <input type="text" id="registerCompany" placeholder="Raz&atilde;o social ou nome fantasia">
+        </label>
+
+        <label class="field" id="registerCompanyCnpjField">
+          <span>CNPJ</span>
+          <input type="text" id="registerCompanyCnpj" placeholder="00.000.000/0000-00" inputmode="numeric">
+        </label>
+
+        <label class="field">
+          <span>Responsável</span>
+          <input type="text" id="registerContactName" placeholder="Nome do responsável pela conta">
+        </label>
+
+        <div class="field-grid two-columns hidden" id="doctorCredentialFields">
+          <label class="field">
+            <span>CRM</span>
+            <input type="text" id="registerDoctorCrm" placeholder="Ex.: 123456">
+          </label>
+
+          <label class="field">
+            <span>UF do CRM</span>
+            <select id="registerDoctorCrmUf">
+              <option value="">Selecione</option>
+              <option value="AC">AC</option>
+              <option value="AL">AL</option>
+              <option value="AP">AP</option>
+              <option value="AM">AM</option>
+              <option value="BA">BA</option>
+              <option value="CE">CE</option>
+              <option value="DF">DF</option>
+              <option value="ES">ES</option>
+              <option value="GO">GO</option>
+              <option value="MA">MA</option>
+              <option value="MT">MT</option>
+              <option value="MS">MS</option>
+              <option value="MG">MG</option>
+              <option value="PA">PA</option>
+              <option value="PB">PB</option>
+              <option value="PR">PR</option>
+              <option value="PE">PE</option>
+              <option value="PI">PI</option>
+              <option value="RJ">RJ</option>
+              <option value="RN">RN</option>
+              <option value="RS">RS</option>
+              <option value="RO">RO</option>
+              <option value="RR">RR</option>
+              <option value="SC">SC</option>
+              <option value="SP">SP</option>
+              <option value="SE">SE</option>
+              <option value="TO">TO</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>CPF do m&eacute;dico</span>
+            <input type="text" id="registerDoctorCpf" inputmode="numeric" maxlength="14" placeholder="000.000.000-00">
+          </label>
+
+          <label class="field">
+            <span>Data de nascimento</span>
+            <input type="date" id="registerDoctorBirthDate">
+          </label>
+
+          <div class="journey-note field-full" id="registerDoctorValidationNote">
+            O cadastro m&eacute;dico coleta CRM, CPF e data de nascimento. O acesso pode ser liberado ap&oacute;s a contrata&ccedil;&atilde;o, mas a emiss&atilde;o de laudos permanece bloqueada at&eacute; valida&ccedil;&atilde;o administrativa do CRM.
+          </div>
+        </div>
+
+        <label class="field">
+          <span>E-mail</span>
+          <input type="email" id="registerEmail" placeholder="contato@empresa.com.br">
+        </label>
+
+        <label class="field">
+          <span>Usuário de acesso</span>
+          <input type="text" id="registerUsername" placeholder="Usuário principal da empresa">
+        </label>
+
+        <div class="login-suggestion-block">
+          <strong>Sugestões de login</strong>
+          <div class="login-suggestion-chips" id="registerUsernameSuggestions"></div>
+        </div>
+
+        <label class="field">
+          <span>Senha</span>
+          <input type="password" id="registerPassword" placeholder="Crie uma senha segura">
+        </label>
+
+        <label class="field">
+          <span>Confirmar senha</span>
+          <input type="password" id="registerPasswordConfirm" placeholder="Repita a senha">
+        </label>
+
+        <label class="field">
+          <span>Planos empresariais dispon&iacute;veis</span>
+          <select id="registerPlan"></select>
+        </label>
+
+        <div class="plan-grid" id="registerPlanGrid"></div>
+
+        <label class="checkbox-card hidden" id="doctorResponsibilityCard">
+          <input type="checkbox" id="registerDoctorTerms">
+          <span>Declaro ser m&eacute;dico legalmente habilitado, com CRM v&aacute;lido, e reconhe&ccedil;o que a responsabilidade t&eacute;cnica pela emiss&atilde;o de documentos &eacute; exclusivamente minha.</span>
+        </label>
+
+        <label class="checkbox-card" id="registerLegalTermsCard">
+          <input type="checkbox" id="registerLegalTerms">
+          <span>Li e estou ciente de que o sistema &eacute; apenas ferramenta de apoio t&eacute;cnico, n&atilde;o substitui avalia&ccedil;&atilde;o m&eacute;dica, n&atilde;o realiza diagn&oacute;stico e n&atilde;o transfere responsabilidade profissional ao DaviCore Health.</span>
+        </label>
+
+        <div class="form-actions">
+          <button class="primary-button" type="submit" id="registerSubmitButton">Criar conta e seguir para pagamento</button>
+          <button class="ghost-button" type="button" id="showLoginFromRegisterButton">Voltar para login</button>
+        </div>
+      </form>
+
+      <form id="setupForm" class="auth-form hidden" novalidate>
+        <label class="field">
+          <span>Empresa / clínica</span>
+          <input type="text" id="setupCompany" placeholder="Nome da empresa ou clínica">
+        </label>
+
+        <label class="field">
+          <span>Usuário administrador</span>
+          <input type="text" id="setupUsername" autocomplete="username" placeholder="Usuário principal">
+        </label>
+
+        <label class="field">
+          <span>Senha</span>
+          <input type="password" id="setupPassword" autocomplete="new-password" placeholder="Defina a senha">
+        </label>
+
+        <label class="field">
+          <span>Confirmar senha</span>
+          <input type="password" id="setupPasswordConfirm" autocomplete="new-password" placeholder="Repita a senha">
+        </label>
+
+        <div class="form-actions">
+          <button class="primary-button" type="submit">Salvar acesso</button>
+          <button class="ghost-button" type="button" id="showLoginButton">Voltar para login</button>
+        </div>
+      </form>
+
+      <p class="status-note" id="authStatus"></p>
+    </section>
+  </div>
+
+  <div class="app-shell hidden" id="adminShell">
+    <header class="topbar">
+      <div class="brand-block">
+        <img class="topbar-logo" src="img/logo.png" alt="DaviCore Health">
+        <div>
+          <p class="eyebrow">Administrador da plataforma</p>
+          <h1>Painel administrativo</h1>
+          <p class="topbar-subtitle">Gestão de clientes, acessos, validade comercial e controle central da plataforma</p>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <div class="topbar-note">Controle central da plataforma</div>
+        <div class="session-panel">
+          <span class="session-user" id="adminSessionUserLabel">Administrador</span>
+          <button class="ghost-button session-button" type="button" id="adminLogoutButton">Sair</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="main-layout">
+      <section class="step-section admin-inline-panel" id="adminPanel">
+        <div class="section-head admin-inline-head">
+          <div>
+            <span class="section-step">Administrador</span>
+            <h3>Painel de acessos</h3>
+            <p class="admin-inline-copy">Cadastre empresas clientes, bloqueie contas, renove validade e ajuste perfis sem sair da área administrativa.</p>
+          </div>
+
+          <div class="admin-inline-actions">
+            <span class="section-chip" id="adminUsersCount">0 acessos</span>
+          </div>
+        </div>
+
+        <div class="admin-nav">
+          <button class="admin-nav-button is-active" type="button" data-admin-view="overview">Visão geral</button>
+          <button class="admin-nav-button" type="button" data-admin-view="users">Ver usuários</button>
+          <button class="admin-nav-button" type="button" data-admin-view="create">Novo cadastro</button>
+          <button class="admin-nav-button" type="button" data-admin-view="pricing">ConfiguraÃ§Ãµes de plano</button>
+        </div>
+
+        <section class="admin-view" data-admin-view-panel="overview">
+          <section class="dashboard-strip admin-dashboard-grid" id="adminDashboardStrip">
+            <article class="dashboard-card">
+              <span>Total de clientes</span>
+              <strong id="dashboardTotalClients">0</strong>
+            </article>
+            <article class="dashboard-card">
+              <span>Clientes ativos</span>
+              <strong id="dashboardActiveClients">0</strong>
+            </article>
+            <article class="dashboard-card warning">
+              <span>Inadimplentes</span>
+              <strong id="dashboardDelinquentClients">0</strong>
+            </article>
+            <article class="dashboard-card">
+              <span>Laudos gerados</span>
+              <strong id="dashboardTotalReports">0</strong>
+            </article>
+          </section>
+
+          <div class="admin-summary-grid">
+            <article class="admin-summary-card">
+              <span class="section-step">Acompanhamento</span>
+              <h4>Resumo rápido</h4>
+              <p>Abra primeiro a visão geral para conferir clientes ativos, inadimplência e o volume total de laudos.</p>
+            </article>
+
+            <article class="admin-summary-card">
+              <span class="section-step">Usuários</span>
+              <h4>Consulta simplificada</h4>
+              <p>Na aba de usuários, cada empresa mostra plano, validade, laudos emitidos e status. Clique para expandir e editar.</p>
+            </article>
+
+            <article class="admin-summary-card">
+              <span class="section-step">Cadastro</span>
+              <h4>Entrada organizada</h4>
+              <p>O formulário de novo cadastro fica separado para deixar o painel mais limpo no uso diário.</p>
+            </article>
+          </div>
+        </section>
+
+        <section class="admin-view hidden" data-admin-view-panel="users">
+          <section class="admin-inline-card">
+            <div class="section-head">
+              <div>
+                <span class="section-step">Carteira de acessos</span>
+                <h3>Empresas e acessos cadastrados</h3>
+              </div>
+              <span class="section-chip">Clique para expandir</span>
+            </div>
+
+            <p class="admin-inline-copy">Clique no usuário para abrir os dados completos, conferir CNPJ, m&eacute;dicos vinculados, laudos gerados, pagamento, validade e cadastro.</p>
+
+            <div class="admin-users-toolbar">
+              <label class="field">
+                <span>Buscar empresa, CNPJ, m&eacute;dico ou usu&aacute;rio</span>
+                <input type="text" id="adminUserSearch" placeholder="Digite empresa, CNPJ, m&eacute;dico, usu&aacute;rio ou e-mail">
+              </label>
+
+              <label class="field">
+                <span>Filtro r&aacute;pido</span>
+                <select id="adminUserFilter">
+                  <option value="active_company">Empresas ativas</option>
+                  <option value="all">Todos os acessos</option>
+                  <option value="active">Ativos</option>
+                  <option value="company">Contas empresa</option>
+                  <option value="doctor">Cadastros m&eacute;dicos</option>
+                  <option value="with_doctors">Empresas com m&eacute;dicos</option>
+                  <option value="expiring">Vencendo em breve</option>
+                  <option value="renewal_contact">Pendente de contato</option>
+                  <option value="inadimplente">Inadimplentes</option>
+                  <option value="blocked">Bloqueados</option>
+                  <option value="pending">Pagamento pendente</option>
+                  <option value="admin">Administradores</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="admin-users-grid" id="adminUsersGrid"></div>
+          </section>
+        </section>
+
+        <section class="admin-view hidden" data-admin-view-panel="create">
+          <section class="admin-inline-card">
+            <div class="section-head">
+              <div>
+                <span class="section-step">Novo acesso</span>
+                <h3>Cadastrar cliente</h3>
+              </div>
+              <span class="section-chip">Liberação comercial</span>
+            </div>
+
+            <div class="plan-grid compact" id="adminPlanGrid"></div>
+
+            <form class="field-grid three-columns" id="createUserForm" novalidate>
+              <label class="field">
+                <span>Empresa</span>
+                <input type="text" id="adminCompany" placeholder="Empresa cliente">
+              </label>
+
+              <label class="field">
+                <span>Responsável</span>
+                <input type="text" id="adminContactName" placeholder="Contato da conta">
+              </label>
+
+              <label class="field">
+                <span>E-mail</span>
+                <input type="email" id="adminEmail" placeholder="financeiro@empresa.com.br">
+              </label>
+
+              <label class="field">
+                <span>Usu&aacute;rio</span>
+                <input type="text" id="adminUsername" placeholder="Login do cliente">
+              </label>
+
+              <label class="field">
+                <span>Senha inicial</span>
+                <input type="password" id="adminPassword" placeholder="Senha provisória">
+              </label>
+
+              <label class="field">
+                <span>Perfil</span>
+                <select id="adminRole">
+                  <option value="buyer">Empresa</option>
+                  <option value="admin">Administrador</option>
+                </select>
+              </label>
+
+              <label class="field">
+                <span>Tipo de cadastro</span>
+                <select id="adminAccountType">
+                  <option value="company">Empresa</option>
+                  <option value="doctor">M&eacute;dico</option>
+                </select>
+              </label>
+
+              <label class="field">
+                <span>CRM</span>
+                <input type="text" id="adminCrmNumber" inputmode="numeric" placeholder="N&uacute;mero do CRM">
+              </label>
+
+              <label class="field">
+                <span>UF do CRM</span>
+                <select id="adminCrmState">
+                  <option value="">Selecione</option>
+                  <option value="AC">AC</option>
+                  <option value="AL">AL</option>
+                  <option value="AP">AP</option>
+                  <option value="AM">AM</option>
+                  <option value="BA">BA</option>
+                  <option value="CE">CE</option>
+                  <option value="DF">DF</option>
+                  <option value="ES">ES</option>
+                  <option value="GO">GO</option>
+                  <option value="MA">MA</option>
+                  <option value="MT">MT</option>
+                  <option value="MS">MS</option>
+                  <option value="MG">MG</option>
+                  <option value="PA">PA</option>
+                  <option value="PB">PB</option>
+                  <option value="PR">PR</option>
+                  <option value="PE">PE</option>
+                  <option value="PI">PI</option>
+                  <option value="RJ">RJ</option>
+                  <option value="RN">RN</option>
+                  <option value="RS">RS</option>
+                  <option value="RO">RO</option>
+                  <option value="RR">RR</option>
+                  <option value="SC">SC</option>
+                  <option value="SP">SP</option>
+                  <option value="SE">SE</option>
+                  <option value="TO">TO</option>
+                </select>
+              </label>
+
+              <label class="field">
+                <span>Valida&ccedil;&atilde;o do CRM</span>
+                <select id="adminCrmValidated">
+                  <option value="false">Pendente</option>
+                  <option value="true">Validado</option>
+                </select>
+              </label>
+
+              <label class="field">
+                <span>Status</span>
+                <select id="adminStatus">
+                  <option value="active">Ativo</option>
+                  <option value="blocked">Bloqueado</option>
+                  <option value="inadimplente">Inadimplente</option>
+                </select>
+              </label>
+
+              <label class="field">
+                <span>Status do pagamento</span>
+                <select id="adminPaymentStatus">
+                  <option value="pending">Pendente</option>
+                  <option value="approved">Aprovado</option>
+                  <option value="rejected">Recusado</option>
+                  <option value="cancelled">Cancelado</option>
+                  <option value="expired">Vencido</option>
+                </select>
+              </label>
+
+              <label class="field">
+                <span>Plano / pacote de laudos</span>
+                <select id="adminPlan"></select>
+              </label>
+
+              <label class="field">
+                <span>Vencimento do plano</span>
+                <input type="date" id="adminPaymentDueAt">
+              </label>
+
+              <label class="field field-full">
+                <span>Observações internas</span>
+                <textarea id="adminNotes" rows="3" placeholder="Controle interno, financeiro ou observações comerciais"></textarea>
+              </label>
+
+              <div class="form-actions field-full">
+                <button class="primary-button" type="submit">Criar acesso</button>
+              </div>
+            </form>
+
+            <p class="status-note" id="adminStatusNote"></p>
+          </section>
+
+          <section class="admin-inline-card hidden">
+            <div class="section-head">
+              <div>
+                <span class="section-step">Carteira de acessos</span>
+                <h3>Clientes cadastrados</h3>
+              </div>
+              <span class="section-chip">Edição rápida</span>
+            </div>
+
+            <div class="admin-users-grid" id="adminUsersGridLegacy"></div>
+          </section>
+        </section>
+
+        <section class="admin-view hidden" data-admin-view-panel="pricing">
+          <section class="admin-inline-card">
+            <div class="section-head">
+              <div>
+                <span class="section-step">ConfiguraÃ§Ãµes de plano</span>
+                <h3>Criar e ajustar planos comerciais</h3>
+              </div>
+              <span class="section-chip">Mercado Pago interligado</span>
+            </div>
+
+            <p class="admin-inline-copy">Altere valores, vigÃªncia, franquia de laudos e modelo de cobranÃ§a. Planos recorrentes passam a usar assinatura mensal no Mercado Pago; planos avulsos seguem pelo checkout tradicional.</p>
+
+            <form class="field-grid three-columns" id="adminPlanConfigForm" novalidate>
+              <label class="field">
+                <span>Nome do plano</span>
+                <input type="text" id="adminPlanConfigName" placeholder="Ex.: MÃ©dico Recorrente 30 Laudos">
+              </label>
+
+              <label class="field">
+                <span>CÃ³digo interno (opcional)</span>
+                <input type="text" id="adminPlanConfigCode" placeholder="Ex.: individual_recorrente_30">
+              </label>
+
+              <label class="field">
+                <span>PÃºblico</span>
+                <select id="adminPlanConfigAudience">
+                  <option value="doctor">MÃ©dico</option>
+                  <option value="company">Empresa</option>
+                </select>
+              </label>
+
+              <label class="field">
+                <span>Modelo de cobranÃ§a</span>
+                <select id="adminPlanConfigBillingModel">
+                  <option value="one_time">Pagamento avulso</option>
+                  <option value="subscription">Assinatura recorrente mensal</option>
+                </select>
+              </label>
+
+              <label class="field">
+                <span>Valor (R$)</span>
+                <input type="number" id="adminPlanConfigPrice" min="0" step="0.01" placeholder="0,00" inputmode="decimal">
+              </label>
+
+              <label class="field">
+                <span>VigÃªncia / ciclo (meses)</span>
+                <input type="number" id="adminPlanConfigMonths" min="1" step="1" value="1">
+              </label>
+
+              <label class="field">
+                <span>Franquia de laudos</span>
+                <input type="number" id="adminPlanConfigLaudoLimit" min="0" step="1" placeholder="Ex.: 30">
+              </label>
+
+              <label class="field">
+                <span>Periodicidade da franquia</span>
+                <select id="adminPlanConfigQuotaPeriod">
+                  <option value="contract">Limite por ciclo contratado</option>
+                  <option value="monthly">Limite renovado mensalmente</option>
+                  <option value="none">Sem limite</option>
+                </select>
+              </label>
+
+              <label class="field">
+                <span>Status</span>
+                <select id="adminPlanConfigStatus">
+                  <option value="active">Ativo</option>
+                  <option value="inactive">Inativo</option>
+                </select>
+              </label>
+
+              <label class="field field-full">
+                <span>DescriÃ§Ã£o comercial</span>
+                <textarea id="adminPlanConfigDescription" rows="3" placeholder="Explique rapidamente o que o plano entrega e como a cobranÃ§a funciona."></textarea>
+              </label>
+
+              <div class="form-actions field-full">
+                <button class="primary-button" type="submit">Criar plano</button>
+              </div>
+            </form>
+
+            <p class="status-note" id="adminPlanStatus"></p>
+          </section>
+
+          <section class="admin-inline-card">
+            <div class="section-head">
+              <div>
+                <span class="section-step">Carteira comercial</span>
+                <h3>Planos ativos e histÃ³rico configurado</h3>
+              </div>
+              <span class="section-chip" id="adminPlansCount">0 planos</span>
+            </div>
+
+            <div class="admin-users-grid" id="adminPlansGrid"></div>
+          </section>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <div class="app-shell hidden" id="appShell">
+    <header class="topbar">
+      <div class="brand-block">
+        <img class="topbar-logo" id="appTopbarLogo" src="img/logo.png" alt="DaviCore Health">
+        <div>
+          <p class="eyebrow" id="appTopbarEyebrow">Ambiente profissional</p>
+          <h1 id="appTopbarTitle">Enquadra PcD</h1>
+          <p class="topbar-subtitle">Fluxo guiado para enquadramento, descrição técnica e emissão de laudo caracterizador</p>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <div class="topbar-note" id="appTopbarNote">Ambiente operacional</div>
+        <div class="session-panel">
+          <span class="session-user" id="sessionUserLabel">Sess&atilde;o local</span>
+          <button class="ghost-button session-button" type="button" id="logoutButton">Sair</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="main-layout">
+      <section class="company-dashboard hidden" id="companyDashboard">
+        <div class="company-dashboard-shell">
+          <div class="company-dashboard-head">
+            <div>
+              <span class="section-step">Dashboard corporativo</span>
+              <h2 id="companyDashboardTitle">Painel administrativo da empresa</h2>
+              <p id="companyDashboardSubtitle">Gest&atilde;o de m&eacute;dicos vinculados, indicadores de uso e controle administrativo do ambiente empresa.</p>
+            </div>
+            <div class="company-dashboard-badges">
+              <span class="section-chip" id="companyDashboardPlanChip">Plano empresarial</span>
+              <span class="section-chip" id="companyDashboardCnpjChip">CNPJ n&atilde;o informado</span>
+            </div>
+          </div>
+
+          <div class="company-dashboard-nav">
+            <button class="admin-nav-button is-active" type="button" data-company-view="overview">Vis&atilde;o geral</button>
+            <button class="admin-nav-button" type="button" data-company-view="doctors">Gest&atilde;o de M&eacute;dicos</button>
+            <button class="admin-nav-button" type="button" data-company-view="branding">Perfil e Marca</button>
+          </div>
+
+          <p class="status-note" id="companyDashboardStatus"></p>
+
+          <section class="company-dashboard-view" data-company-view-panel="overview">
+            <section class="dashboard-strip company-metrics-grid">
+              <article class="dashboard-card">
+                <span>Total de documentos gerados</span>
+                <strong id="companyMetricTotalDocuments">0</strong>
+              </article>
+              <article class="dashboard-card">
+                <span>Documentos no m&ecirc;s</span>
+                <strong id="companyMetricMonthlyDocuments">0</strong>
+              </article>
+              <article class="dashboard-card">
+                <span>M&eacute;dicos cadastrados</span>
+                <strong id="companyMetricDoctors">0</strong>
+              </article>
+              <article class="dashboard-card contact">
+                <span>&Uacute;ltima atividade</span>
+                <strong id="companyMetricLastActivity">Sem registro</strong>
+              </article>
+            </section>
+
+            <div class="company-overview-grid">
+              <section class="step-section company-chart-panel">
+                <div class="section-head company-panel-head">
+                  <div>
+                    <span class="section-step">Utiliza&ccedil;&atilde;o</span>
+                    <h3>Documentos por per&iacute;odo</h3>
+                  </div>
+                  <label class="field company-month-field">
+                    <span>M&ecirc;s</span>
+                    <select id="companyUsageMonthFilter"></select>
+                  </label>
+                </div>
+                <div class="company-chart-summary" id="companyUsageSummary">Nenhum documento registrado neste per&iacute;odo.</div>
+                <div class="company-chart-bars" id="companyUsageBars"></div>
+              </section>
+
+              <section class="step-section company-activity-panel">
+                <div class="section-head company-panel-head">
+                  <div>
+                    <span class="section-step">Atividades recentes</span>
+                    <h3>Movimenta&ccedil;&otilde;es do ambiente empresa</h3>
+                  </div>
+                </div>
+                <div class="company-activity-list" id="companyActivityList"></div>
+              </section>
+            </div>
+          </section>
+
+          <section class="company-dashboard-view hidden" data-company-view-panel="doctors">
+            <div class="company-doctors-grid">
+              <section class="step-section company-form-panel">
+                <div class="section-head company-panel-head">
+                  <div>
+                    <span class="section-step">Novo m&eacute;dico</span>
+                    <h3>Adicionar m&eacute;dico vinculado</h3>
+                  </div>
+                </div>
+                <form class="company-doctor-form" id="companyDoctorForm" novalidate>
+                  <label class="field">
+                    <span>Nome</span>
+                    <input type="text" id="companyDoctorName" placeholder="Nome completo do m&eacute;dico">
+                  </label>
+                  <label class="field">
+                    <span>CRM</span>
+                    <input type="text" id="companyDoctorCrm" placeholder="Informe o CRM" inputmode="numeric">
+                  </label>
+                  <label class="field">
+                    <span>UF do CRM</span>
+                    <select id="companyDoctorCrmState"></select>
+                  </label>
+                  <label class="field">
+                    <span>Especialidade (opcional)</span>
+                    <input type="text" id="companyDoctorSpecialty" placeholder="Ex.: Medicina do trabalho">
+                  </label>
+                  <div class="journey-note">
+                    M&eacute;dicos cadastrados pela empresa n&atilde;o passam por valida&ccedil;&atilde;o autom&aacute;tica de CRM. A responsabilidade cadastral &eacute; da empresa, e o sistema gera o acesso operacional do m&eacute;dico no momento do cadastro.
+                  </div>
+                  <div class="form-actions">
+                    <button class="primary-button" type="submit">Cadastrar m&eacute;dico e gerar acesso</button>
+                  </div>
+                </form>
+
+                <section class="company-access-card hidden" id="companyDoctorAccessPanel" aria-live="polite">
+                  <div class="section-head company-panel-head company-access-head">
+                    <div>
+                      <span class="section-step">Login gerado</span>
+                      <h3>Credenciais operacionais do m&eacute;dico</h3>
+                    </div>
+                  </div>
+                  <p class="company-access-summary" id="companyDoctorAccessSummary">As credenciais rec&eacute;m-geradas aparecem aqui para envio seguro ao m&eacute;dico.</p>
+                  <div class="field-grid two-columns company-access-grid">
+                    <label class="field">
+                      <span>Usu&aacute;rio</span>
+                      <input type="text" id="companyDoctorAccessUsername" readonly>
+                    </label>
+                    <label class="field">
+                      <span>Senha provis&oacute;ria</span>
+                      <input type="text" id="companyDoctorAccessPassword" readonly>
+                    </label>
+                  </div>
+                  <div class="form-actions">
+                    <button class="ghost-button" type="button" id="companyDoctorAccessCopy">Copiar credenciais</button>
+                  </div>
+                  <p class="company-access-hint" id="companyDoctorAccessHint">Essas credenciais s&atilde;o exibidas apenas nesta gera&ccedil;&atilde;o. Compartilhe em canal seguro e oriente o m&eacute;dico a trocar a senha no primeiro acesso.</p>
+                </section>
+              </section>
+
+              <section class="step-section company-list-panel">
+                <div class="section-head company-panel-head">
+                  <div>
+                    <span class="section-step">Gest&atilde;o de M&eacute;dicos</span>
+                    <h3>Lista de m&eacute;dicos vinculados</h3>
+                  </div>
+                  <span class="section-chip" id="companyDoctorsCount">0 m&eacute;dicos</span>
+                </div>
+                <div class="company-doctors-list" id="companyDoctorsList"></div>
+              </section>
+            </div>
+          </section>
+
+          <section class="company-dashboard-view hidden" data-company-view-panel="branding">
+            <div class="company-brand-grid">
+              <section class="step-section company-form-panel">
+                <div class="section-head company-panel-head">
+                  <div>
+                    <span class="section-step">Perfil corporativo</span>
+                    <h3>Logo e identifica&ccedil;&atilde;o da empresa</h3>
+                  </div>
+                </div>
+                <form class="company-profile-form" id="companyProfileForm" novalidate>
+                  <label class="field">
+                    <span>Nome da empresa</span>
+                    <input type="text" id="companyProfileName" placeholder="Raz&atilde;o social ou nome fantasia">
+                  </label>
+                  <label class="field">
+                    <span>CNPJ</span>
+                    <input type="text" id="companyProfileCnpj" placeholder="00.000.000/0000-00" inputmode="numeric">
+                  </label>
+                  <label class="field">
+                    <span>Logo da empresa</span>
+                    <input type="file" id="companyLogoInput" accept="image/png,image/jpeg,image/webp,image/svg+xml">
+                  </label>
+                  <p class="company-profile-hint">A logo enviada substitui a marca padr&atilde;o dentro do ambiente da empresa.</p>
+                  <div class="form-actions">
+                    <button class="primary-button" type="submit">Salvar perfil corporativo</button>
+                  </div>
+                </form>
+              </section>
+
+              <section class="step-section company-brand-preview">
+                <div class="section-head company-panel-head">
+                  <div>
+                    <span class="section-step">Pr&eacute;-visualiza&ccedil;&atilde;o</span>
+                    <h3>Marca exibida no cabe&ccedil;alho</h3>
+                  </div>
+                </div>
+                <div class="company-logo-preview-card">
+                  <img id="companyLogoPreview" src="img/logo.png" alt="Pr&eacute;-visualiza&ccedil;&atilde;o da logo da empresa">
+                </div>
+                <div class="company-brand-note">
+                  <strong>Regra do ambiente empresa</strong>
+                  <p>Este perfil &eacute; exclusivamente administrativo. N&atilde;o h&aacute; emiss&atilde;o, assinatura nem acesso &agrave; tela t&eacute;cnica de laudo.</p>
+                </div>
+              </section>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section class="home-panel" id="homePanel">
+        <section class="renewal-banner hidden" id="renewalBanner"></section>
+        <div class="intro-card">
+          <div class="intro-copy">
+            <span class="eyebrow">Plataforma guiada</span>
+            <h2>Enquadramento PcD guiado, rápido e padronizado</h2>
+            <p>
+              Sistema web para uso ocupacional com fluxo estruturado por tipo de deficiência,
+              enquadramento orientado por regras e emissão de laudo caracterizador em padrão operacional.
+            </p>
+          </div>
+
+          <div class="rule-strip">
+            <article class="rule-chip">
+              <strong>Fluxo guiado</strong>
+              <span>O sistema abre somente os campos relevantes para cada cenário selecionado.</span>
+            </article>
+            <article class="rule-chip">
+              <strong>Resultado direto</strong>
+              <span>Enquadra, não enquadra ou direciona para revisão complementar quando necessário.</span>
+            </article>
+            <article class="rule-chip">
+              <strong>Laudo padronizado</strong>
+              <span>A emissão final segue o fluxo do sistema com texto técnico mais limpo e objetivo.</span>
+            </article>
+            <article class="rule-chip">
+              <strong>Campos mais objetivos</strong>
+              <span>Menos retrabalho manual, mais seleção guiada e preenchimento assistido.</span>
+            </article>
+          </div>
+        </div>
+
+        <div class="module-selector">
+          <div class="section-title">
+            <span class="eyebrow">Tela inicial</span>
+            <h3>Selecione o módulo de análise</h3>
+          </div>
+
+          <div class="module-grid">
+            <button class="module-card" type="button" data-module="fisica">
+              <span class="module-tag">Módulo</span>
+              <strong>Deficiência Física</strong>
+              <p>Amputação, deformidade, força, mobilidade e perda funcional do segmento acometido.</p>
+            </button>
+            <button class="module-card" type="button" data-module="auditiva">
+              <span class="module-tag">Módulo</span>
+              <strong>Deficiência Auditiva</strong>
+              <p>Leitura de audiometria, médias por orelha e enquadramento por critério objetivo.</p>
+            </button>
+            <button class="module-card" type="button" data-module="visual">
+              <span class="module-tag">Módulo</span>
+              <strong>Deficiência Visual</strong>
+              <p>Acuidade, campo visual, visão monocular e enquadramento por achado objetivo.</p>
+            </button>
+            <button class="module-card" type="button" data-module="clinicas">
+              <span class="module-tag">Módulo</span>
+              <strong>Condições Clínicas</strong>
+              <p>Fibromialgia, dor crônica e quadros persistentes com repercussão funcional.</p>
+            </button>
+            <button class="module-card" type="button" data-module="intelectual">
+              <span class="module-tag">Módulo</span>
+              <strong>Deficiência Intelectual</strong>
+              <p>Funcionamento intelectual, habilidades adaptativas e necessidade de suporte.</p>
+            </button>
+            <button class="module-card" type="button" data-module="psicossocial">
+              <span class="module-tag">Módulo</span>
+              <strong>Deficiência Mental/Psicossocial</strong>
+              <p>Restrição de participação social e laboral, persistência do quadro e suporte documental.</p>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section class="workspace hidden" id="workspace">
+        <div class="workspace-head">
+          <button class="ghost-button" type="button" id="backToModules">Voltar aos módulos</button>
+
+          <div class="workspace-title">
+            <span class="eyebrow">Módulo ativo</span>
+            <h2 id="moduleTitle">Selecione um módulo</h2>
+          </div>
+
+          <div class="workspace-guidance" id="moduleGuidance">
+            Siga o fluxo guiado do módulo para chegar ao enquadramento e ao laudo final.
+          </div>
+        </div>
+
+        <div class="workspace-grid">
+          <section class="form-stage">
+            <div class="step-track">
+              <span class="step-pill is-active">1. Seleção guiada</span>
+              <span class="step-pill">2. Critérios do módulo</span>
+              <span class="step-pill">3. Enquadramento final</span>
+            </div>
+
+            <div class="rule-banner" id="moduleRuleBanner">
+              O sistema aplica a lógica do módulo selecionado e conduz até o enquadramento final com emissão estruturada.
+            </div>
+
+            <form id="assessmentForm" novalidate>
+              <section class="step-section report-identity">
+                <div class="section-head">
+                  <div>
+                    <span class="section-step">Identificação</span>
+                    <h3>Dados para emissão do laudo</h3>
+                  </div>
+                  <span class="section-chip">Usados no PDF final</span>
+                </div>
+
+                <div class="field-grid three-columns">
+                  <label class="field">
+                    <span>Nome do trabalhador</span>
+                    <input type="text" id="reportWorkerName" placeholder="Nome completo">
+                  </label>
+
+                  <label class="field">
+                    <span>CPF</span>
+                    <input type="text" id="reportWorkerCpf" placeholder="000.000.000-00">
+                  </label>
+
+                  <label class="field">
+                    <span>Data de nascimento</span>
+                    <input type="date" id="reportBirthDate">
+                  </label>
+
+                  <label class="field">
+                    <span>Data da avaliação</span>
+                    <input type="date" id="reportDate">
+                  </label>
+
+                  <label class="field">
+                    <span>Origem da deficiência</span>
+                    <select id="reportOrigin">
+                      <option value="">Selecione</option>
+                      <option value="congenita">Congênita</option>
+                      <option value="acidente_trabalho">Acidente/doença do trabalho</option>
+                      <option value="acidente_comum">Acidente comum</option>
+                      <option value="doenca_comum">Doença comum</option>
+                      <option value="pos_operatorio">Adquirida pós-operatório</option>
+                    </select>
+                  </label>
+
+                  <label class="field">
+                    <span>Empresa</span>
+                    <input type="text" id="reportCompany" placeholder="Razão social ou nome fantasia">
+                  </label>
+
+                  <label class="field">
+                    <span>Função / cargo</span>
+                    <input type="text" id="reportRole" placeholder="Função exercida">
+                  </label>
+
+                  <label class="field">
+                    <span>Setor</span>
+                    <input type="text" id="reportSector" placeholder="Setor ou área">
+                  </label>
+
+                  <label class="field">
+                    <span>Profissional responsável</span>
+                    <input type="text" id="reportExaminer" placeholder="Nome do medico">
+                  </label>
+
+                  <label class="field">
+                    <span>Conselho / registro</span>
+                    <input type="text" id="reportExaminerRegistry" placeholder="Ex.: CRM 00000">
+                  </label>
+
+                  <label class="field">
+                    <span>Especialidade medica</span>
+                    <input type="text" id="reportExaminerSpecialty" placeholder="Ex.: Medicina do Trabalho">
+                  </label>
+
+                  <label class="field">
+                    <span>Unidade / clínica</span>
+                    <input type="text" id="reportUnit" placeholder="Local de atendimento">
+                  </label>
+                </div>
+              </section>
+
+              <section class="step-section report-documents">
+                <div class="section-head">
+                  <div>
+                    <span class="section-step">Documentação</span>
+                    <h3>Anexos medicos externos do caso</h3>
+                  </div>
+                    <span class="section-chip">Obrigatorio para impressao final</span>
+                </div>
+
+                <div class="helper-box helper-box-light">
+                  <strong>Como este bloco funciona</strong>
+                  <p>
+                    Voce pode anexar laudo medico externo ou documento clinico equivalente.
+                    Quando houver anexos, o sistema os organiza junto com o laudo caracterizador
+                    no pacote final de impressao.
+                  </p>
+                </div>
+
+                <div class="field-grid two-columns">
+                  <label class="field field-full">
+                    <span>Laudo medico externo / documentacao complementar</span>
+                    <input type="file" id="reportExternalFiles" accept=".pdf,.png,.jpg,.jpeg,.webp" multiple>
+                    <small id="reportExternalFilesStatus">Nenhum documento anexado no momento. O anexo e opcional.</small>
+                  </label>
+                </div>
+
+                <div class="attachment-list" id="reportExternalFilesList"></div>
+              </section>
+
+              <section class="module-form" data-module-form="auditiva">
+                <div class="step-section">
+                  <div class="section-head">
+                    <div>
+                      <span class="section-step">Passo 1</span>
+                      <h3>Evidência audiométrica</h3>
+                    </div>
+                    <span class="section-chip">Obrigatório considerar impacto funcional</span>
+                  </div>
+
+                  <div class="field-grid two-columns">
+                    <label class="field">
+                      <span>Upload da audiometria</span>
+                      <input type="file" id="audioFile" accept=".csv,.txt,.json,.pdf,.png,.jpg,.jpeg">
+                      <small id="audioUploadStatus">É possível importar arquivo estruturado em CSV, TXT, JSON ou PDF textual para preenchimento automático.</small>
+                    </label>
+
+                    <label class="field">
+                      <span>Audiograma sem uso de aparelho auditivo?</span>
+                      <select id="audioWithoutAid">
+                        <option value="">Selecione</option>
+                        <option value="sim">Sim</option>
+                        <option value="nao">Não</option>
+                      </select>
+                    </label>
+
+                    <label class="field field-full">
+                      <span>Colar texto da audiometria</span>
+                      <textarea id="audioPaste" rows="4" placeholder="Ex.: OD 500=50 1000=55 2000=60 3000=58 | OE 500=48 1000=52 2000=56 3000=60"></textarea>
+                    </label>
+                  </div>
+
+                  <div class="inline-actions">
+                    <button class="secondary-button" type="button" id="audioParsePaste">Ler texto colado</button>
+                  </div>
+                </div>
+
+                <div class="step-section">
+                  <div class="section-head">
+                    <div>
+                      <span class="section-step">Passo 2</span>
+                      <h3>Frequências por orelha</h3>
+                    </div>
+                    <span class="section-chip">500 Hz • 1000 Hz • 2000 Hz • 3000 Hz</span>
+                  </div>
+
+                  <div class="field-grid four-columns compact-grid">
+                    <label class="field"><span>500 Hz OD</span><input type="number" id="audioOD500" min="0" max="130" step="0.1" placeholder="dB"></label>
+                    <label class="field"><span>1000 Hz OD</span><input type="number" id="audioOD1000" min="0" max="130" step="0.1" placeholder="dB"></label>
+                    <label class="field"><span>2000 Hz OD</span><input type="number" id="audioOD2000" min="0" max="130" step="0.1" placeholder="dB"></label>
+                    <label class="field"><span>3000 Hz OD</span><input type="number" id="audioOD3000" min="0" max="130" step="0.1" placeholder="dB"></label>
+                    <label class="field"><span>500 Hz OE</span><input type="number" id="audioOE500" min="0" max="130" step="0.1" placeholder="dB"></label>
+                    <label class="field"><span>1000 Hz OE</span><input type="number" id="audioOE1000" min="0" max="130" step="0.1" placeholder="dB"></label>
+                    <label class="field"><span>2000 Hz OE</span><input type="number" id="audioOE2000" min="0" max="130" step="0.1" placeholder="dB"></label>
+                    <label class="field"><span>3000 Hz OE</span><input type="number" id="audioOE3000" min="0" max="130" step="0.1" placeholder="dB"></label>
+                    <label class="field"><span>Média OD</span><input type="text" id="audioAvgOD" readonly placeholder="calculada"></label>
+                    <label class="field"><span>Média OE</span><input type="text" id="audioAvgOE" readonly placeholder="calculada"></label>
+                  </div>
+                </div>
+
+                <div class="step-section">
+                  <div class="section-head">
+                    <div>
+                      <span class="section-step">Passo 3</span>
+                      <h3>Impacto funcional guiado</h3>
+                    </div>
+                    <span class="section-chip">Sem texto livre obrigatório</span>
+                  </div>
+
+                  <div class="helper-box">
+                    <strong>O que significa impacto funcional auditivo?</strong>
+                    <p>É o prejuízo prático para compreender fala, localizar alertas sonoros, comunicar-se em ambiente ruidoso e participar do trabalho em igualdade de condições.</p>
+                  </div>
+
+                  <div class="field-grid two-columns">
+                    <label class="field">
+                      <span>Grau de impacto funcional auditivo</span>
+                      <select id="audioImpactGrade">
+                        <option value="">Selecione</option>
+                        <option value="ausente">Ausente</option>
+                        <option value="leve">Leve</option>
+                        <option value="moderado">Moderado</option>
+                        <option value="grave">Grave</option>
+                      </select>
+                    </label>
+
+                    <label class="field">
+                      <span>CID informado</span>
+                      <input type="text" id="audioCid" placeholder="Ex.: H90.3">
+                    </label>
+                  </div>
+
+                  <div class="field-group">
+                    <div class="group-title">Marque os impactos observados ou referidos</div>
+                    <div class="toggle-grid">
+                      <label class="toggle-chip"><input type="checkbox" name="audioImpactMarker" value="fala_ruido" data-label="dificuldade para compreender fala em ambientes com ruído"><span>Dificuldade para compreender fala em ruído</span></label>
+                      <label class="toggle-chip"><input type="checkbox" name="audioImpactMarker" value="repeticao" data-label="necessidade frequente de repetição na comunicação"><span>Necessidade frequente de repetição</span></label>
+                      <label class="toggle-chip"><input type="checkbox" name="audioImpactMarker" value="alertas" data-label="prejuízo para perceber sinais e alertas sonoros"><span>Percepção reduzida de alertas sonoros</span></label>
+                      <label class="toggle-chip"><input type="checkbox" name="audioImpactMarker" value="grupos" data-label="dificuldade de comunicação em grupos ou reuniões"><span>Dificuldade em grupos ou reuniões</span></label>
+                      <label class="toggle-chip"><input type="checkbox" name="audioImpactMarker" value="telefone" data-label="prejuízo para comunicação por telefone, rádio ou interfone"><span>Prejuízo em telefone, rádio ou interfone</span></label>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="module-form" data-module-form="fisica">
+                <div class="step-section">
+                  <div class="section-head">
+                    <div>
+                      <span class="section-step">Passo 1</span>
+                      <h3>Caracterização corporal</h3>
+                    </div>
+                    <span class="section-chip">Permanência e impacto têm maior peso</span>
+                  </div>
+
+                  <div class="helper-box">
+                    <strong>Escolha primeiro a situação principal.</strong>
+                    <p>Quando você seleciona o tipo físico predominante, o sistema passa a destacar só os campos relevantes e decide com mais objetividade.</p>
+                  </div>
+
+                  <div class="choice-grid" id="physicalCaseChoices">
+                    <button class="choice-card" type="button" data-physical-choice="Amputação">Amputação</button>
+                    <button class="choice-card" type="button" data-physical-choice="Limitação articular">Perda de movimento</button>
+                    <button class="choice-card" type="button" data-physical-choice="Lesão neurológica">Paresia / sequela neurológica</button>
+                    <button class="choice-card" type="button" data-physical-choice="Deformidade">Deformidade funcional</button>
+                    <button class="choice-card" type="button" data-physical-choice="Sequela traumática">Sequela traumática</button>
+                    <button class="choice-card" type="button" data-physical-choice="Outras alterações físicas permanentes">Outro quadro físico</button>
+                  </div>
+
+                  <div class="field-grid three-columns">
+                    <label class="field hidden" id="physicalConditionTypeField">
+                      <span>Tipo de condição</span>
+                      <select id="physicalConditionType">
+                        <option value="">Selecione</option>
+                        <option value="Amputação">Amputação</option>
+                        <option value="Limitação articular">Limitação articular</option>
+                        <option value="Lesão neurológica">Lesão neurológica</option>
+                        <option value="Deformidade">Deformidade</option>
+                        <option value="Sequela traumática">Sequela traumática</option>
+                        <option value="Outras alterações físicas permanentes">Outras alterações físicas permanentes</option>
+                      </select>
+                    </label>
+
+                    <label class="field" id="physicalSegmentField">
+                      <span>Segmento corporal</span>
+                      <select id="physicalSegment">
+                        <option value="">Selecione</option>
+                        <option value="membro superior">Membro superior</option>
+                        <option value="ombro">Ombro</option>
+                        <option value="cotovelo">Cotovelo</option>
+                        <option value="punho e mão">Punho e mão</option>
+                        <option value="membro inferior">Membro inferior</option>
+                        <option value="quadril">Quadril</option>
+                        <option value="joelho">Joelho</option>
+                        <option value="tornozelo e pé">Tornozelo e pé</option>
+                        <option value="coluna">Coluna</option>
+                        <option value="outro segmento">Outro segmento</option>
+                      </select>
+                    </label>
+
+                    <label class="field hidden" id="physicalAmputationScopeField">
+                      <span>Região da amputação</span>
+                      <select id="physicalAmputationScope">
+                        <option value="">Selecione</option>
+                        <option value="dedos_mao">Dedo(s) da mão</option>
+                        <option value="mao_punho">Mão / punho</option>
+                        <option value="antebraco">Antebraço</option>
+                        <option value="braco">Braço</option>
+                        <option value="dedos_pe">Dedo(s) do pé</option>
+                        <option value="pe_tornozelo">Pé / tornozelo</option>
+                        <option value="perna">Perna</option>
+                        <option value="coxa">Coxa</option>
+                      </select>
+                    </label>
+
+                    <label class="field" id="physicalLateralityField">
+                      <span>Lateralidade</span>
+                      <select id="physicalLaterality">
+                        <option value="">Selecione</option>
+                        <option value="direito">Direito</option>
+                        <option value="esquerdo">Esquerdo</option>
+                        <option value="bilateral">Bilateral</option>
+                        <option value="axial">Axial/sem lateralidade</option>
+                      </select>
+                    </label>
+
+                    <label class="field" id="physicalPermanentField">
+                      <span>Condição permanente?</span>
+                      <select id="physicalPermanent">
+                        <option value="">Selecione</option>
+                        <option value="sim">Sim</option>
+                        <option value="nao">Não</option>
+                      </select>
+                    </label>
+
+                    <label class="field" id="physicalClinicalBasisField">
+                      <span>Base clínica principal</span>
+                      <select id="physicalClinicalBasis">
+                        <option value="">Selecione</option>
+                        <option value="congênita">Congênita</option>
+                        <option value="traumática">Traumática</option>
+                        <option value="pós-cirúrgica">Pós-cirúrgica</option>
+                        <option value="neurológica">Neurológica</option>
+                        <option value="vascular">Vascular</option>
+                        <option value="outra base clínica">Outra base clínica permanente</option>
+                      </select>
+                    </label>
+
+                    <label class="field" id="physicalSupportDocsField">
+                      <span>Documentação objetiva disponível?</span>
+                      <select id="physicalSupportDocs">
+                        <option value="">Selecione</option>
+                        <option value="sim">Sim</option>
+                        <option value="nao">Não</option>
+                      </select>
+                    </label>
+
+                    <label class="field" id="physicalCidField">
+                      <span>CID informado</span>
+                      <input type="text" id="physicalCid" placeholder="Ex.: S68.1">
+                    </label>
+                  </div>
+
+                  <div class="field-grid three-columns hidden-block" id="physicalAmputationGeneralGroup">
+                    <label class="field" id="physicalAmputationLevelField">
+                      <span>Nível anatômico predominante</span>
+                      <select id="physicalAmputationLevel">
+                        <option value="">Selecione</option>
+                        <option value="parcial">Amputação parcial</option>
+                        <option value="transmetacarpiana">Transmetacarpiana / nível equivalente</option>
+                        <option value="desarticulacao_punho">Desarticulação de punho</option>
+                        <option value="transradial">Transradial</option>
+                        <option value="transumeral">Transumeral</option>
+                        <option value="transmetatarsiana">Transmetatarsiana / nível equivalente</option>
+                        <option value="desarticulacao_tornozelo">Desarticulação de tornozelo</option>
+                        <option value="transtibial">Transtibial</option>
+                        <option value="transfemoral">Transfemoral</option>
+                      </select>
+                    </label>
+                  </div>
+
+                  <div class="hidden-block" id="physicalHandDigitsGroup">
+                    <div class="field-group">
+                      <div class="group-title">Quirodáctilos acometidos</div>
+                      <div class="digit-grid">
+                        <label class="digit-card">
+                          <input type="checkbox" id="handThumb">
+                          <span>1º quirodáctilo</span>
+                          <select id="handThumbLevel">
+                            <option value="">Nível</option>
+                            <option value="falange distal">Falange distal</option>
+                            <option value="falange proximal">Falange proximal</option>
+                            <option value="desarticulação metacarpofalângica">Desarticulação metacarpofalângica</option>
+                          </select>
+                        </label>
+                        <label class="digit-card">
+                          <input type="checkbox" id="handIndex">
+                          <span>2º quirodáctilo</span>
+                          <select id="handIndexLevel">
+                            <option value="">Nível</option>
+                            <option value="falange distal">Falange distal</option>
+                            <option value="falange média">Falange média</option>
+                            <option value="falange proximal">Falange proximal</option>
+                            <option value="desarticulação metacarpofalângica">Desarticulação metacarpofalângica</option>
+                          </select>
+                        </label>
+                        <label class="digit-card">
+                          <input type="checkbox" id="handMiddle">
+                          <span>3º quirodáctilo</span>
+                          <select id="handMiddleLevel">
+                            <option value="">Nível</option>
+                            <option value="falange distal">Falange distal</option>
+                            <option value="falange média">Falange média</option>
+                            <option value="falange proximal">Falange proximal</option>
+                            <option value="desarticulação metacarpofalângica">Desarticulação metacarpofalângica</option>
+                          </select>
+                        </label>
+                        <label class="digit-card">
+                          <input type="checkbox" id="handRing">
+                          <span>4º quirodáctilo</span>
+                          <select id="handRingLevel">
+                            <option value="">Nível</option>
+                            <option value="falange distal">Falange distal</option>
+                            <option value="falange média">Falange média</option>
+                            <option value="falange proximal">Falange proximal</option>
+                            <option value="desarticulação metacarpofalângica">Desarticulação metacarpofalângica</option>
+                          </select>
+                        </label>
+                        <label class="digit-card">
+                          <input type="checkbox" id="handLittle">
+                          <span>5º quirodáctilo</span>
+                          <select id="handLittleLevel">
+                            <option value="">Nível</option>
+                            <option value="falange distal">Falange distal</option>
+                            <option value="falange média">Falange média</option>
+                            <option value="falange proximal">Falange proximal</option>
+                            <option value="desarticulação metacarpofalângica">Desarticulação metacarpofalângica</option>
+                          </select>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="hidden-block" id="physicalFootDigitsGroup">
+                    <div class="field-group">
+                      <div class="group-title">Pododáctilos acometidos</div>
+                      <div class="digit-grid">
+                        <label class="digit-card">
+                          <input type="checkbox" id="footHallux">
+                          <span>1º pododáctilo</span>
+                          <select id="footHalluxLevel">
+                            <option value="">Nível</option>
+                            <option value="falange distal">Falange distal</option>
+                            <option value="falange proximal">Falange proximal</option>
+                            <option value="desarticulação metatarsofalângica">Desarticulação metatarsofalângica</option>
+                          </select>
+                        </label>
+                        <label class="digit-card">
+                          <input type="checkbox" id="footSecond">
+                          <span>2º pododáctilo</span>
+                          <select id="footSecondLevel">
+                            <option value="">Nível</option>
+                            <option value="falange distal">Falange distal</option>
+                            <option value="falange média">Falange média</option>
+                            <option value="falange proximal">Falange proximal</option>
+                            <option value="desarticulação metatarsofalângica">Desarticulação metatarsofalângica</option>
+                          </select>
+                        </label>
+                        <label class="digit-card">
+                          <input type="checkbox" id="footThird">
+                          <span>3º pododáctilo</span>
+                          <select id="footThirdLevel">
+                            <option value="">Nível</option>
+                            <option value="falange distal">Falange distal</option>
+                            <option value="falange média">Falange média</option>
+                            <option value="falange proximal">Falange proximal</option>
+                            <option value="desarticulação metatarsofalângica">Desarticulação metatarsofalângica</option>
+                          </select>
+                        </label>
+                        <label class="digit-card">
+                          <input type="checkbox" id="footFourth">
+                          <span>4º pododáctilo</span>
+                          <select id="footFourthLevel">
+                            <option value="">Nível</option>
+                            <option value="falange distal">Falange distal</option>
+                            <option value="falange média">Falange média</option>
+                            <option value="falange proximal">Falange proximal</option>
+                            <option value="desarticulação metatarsofalângica">Desarticulação metatarsofalângica</option>
+                          </select>
+                        </label>
+                        <label class="digit-card">
+                          <input type="checkbox" id="footFifth">
+                          <span>5º pododáctilo</span>
+                          <select id="footFifthLevel">
+                            <option value="">Nível</option>
+                            <option value="falange distal">Falange distal</option>
+                            <option value="falange média">Falange média</option>
+                            <option value="falange proximal">Falange proximal</option>
+                            <option value="desarticulação metatarsofalângica">Desarticulação metatarsofalângica</option>
+                          </select>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="step-section">
+                  <div class="section-head">
+                    <div>
+                      <span class="section-step">Passo 2</span>
+                      <h3>Objetivação funcional</h3>
+                    </div>
+                    <span class="section-chip">O sistema monta as limitações por seleção</span>
+                  </div>
+
+                  <div class="helper-box">
+                    <strong>O que é impacto funcional no módulo físico?</strong>
+                    <p>É a limitação concreta para caminhar, agachar, elevar o braço, sustentar peso, alcançar, manipular, manter postura, equilibrar-se ou executar atividades ocupacionais.</p>
+                  </div>
+
+                  <div class="field-grid three-columns">
+                    <label class="field" id="physicalMovementFocusField">
+                      <span>Movimento / função predominante afetada</span>
+                      <select id="physicalMovementFocus">
+                        <option value="">Selecione</option>
+                      </select>
+                    </label>
+
+                    <label class="field" id="physicalAnatomicalLossField">
+                      <span>Perda anatômica</span>
+                      <select id="physicalAnatomicalLoss">
+                        <option value="">Selecione</option>
+                        <option value="nenhuma">Nenhuma</option>
+                        <option value="minima">Mínima</option>
+                        <option value="parcial">Parcial relevante</option>
+                        <option value="relevante">Relevante</option>
+                      </select>
+                    </label>
+
+                    <label class="field" id="physicalStrengthPatternField">
+                      <span>Perda de força predominante</span>
+                      <select id="physicalStrengthPattern">
+                        <option value="">Selecione</option>
+                      </select>
+                    </label>
+
+                    <label class="field" id="physicalStrengthGradeField">
+                      <span>Perda de força muscular (grau MRC)</span>
+                      <select id="physicalStrengthGrade">
+                        <option value="">Selecione</option>
+                        <option value="5">5</option>
+                        <option value="4">4</option>
+                        <option value="3">3</option>
+                        <option value="2">2</option>
+                        <option value="1">1</option>
+                        <option value="0">0</option>
+                        <option value="na">Não avaliado</option>
+                      </select>
+                    </label>
+
+                    <label class="field" id="physicalMobilityField">
+                      <span>Limitação de mobilidade</span>
+                      <select id="physicalMobility">
+                        <option value="">Selecione</option>
+                        <option value="nenhuma">Nenhuma</option>
+                        <option value="leve">Leve</option>
+                        <option value="moderada">Moderada</option>
+                        <option value="grave">Grave</option>
+                      </select>
+                    </label>
+
+                    <label class="field" id="physicalImpactGradeField">
+                      <span>Grau do impacto funcional</span>
+                      <select id="physicalImpactGrade">
+                        <option value="">Selecione</option>
+                        <option value="leve">Leve</option>
+                        <option value="moderado">Moderado</option>
+                        <option value="grave">Grave</option>
+                      </select>
+                    </label>
+
+                    <label class="field checkbox-card" id="physicalFunctionalLossField">
+                      <input type="checkbox" id="physicalFunctionalLossSuspected">
+                      <span>Há suspeita consistente de perda funcional de segmento</span>
+                    </label>
+                  </div>
+
+                  <div class="field-group">
+                    <div class="group-title">Selecione as limitações funcionais observadas</div>
+                    <div class="toggle-grid" id="physicalFunctionChecklist"></div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="module-form" data-module-form="clinicas">
+                <div class="step-section">
+                  <div class="section-head">
+                    <div>
+                      <span class="section-step">Passo 1</span>
+                      <h3>Condição clínica e documentação</h3>
+                    </div>
+                    <span class="section-chip">Nunca classificar automaticamente</span>
+                  </div>
+
+                  <div class="field-grid three-columns">
+                    <label class="field">
+                      <span>Condição clínica</span>
+                      <select id="clinicalCondition">
+                        <option value="">Selecione</option>
+                        <option value="fibromialgia">Fibromialgia</option>
+                        <option value="dor crônica musculoesquelética">Dor crônica musculoesquelética</option>
+                        <option value="síndrome dolorosa persistente">Síndrome dolorosa persistente</option>
+                        <option value="doença reumatológica com repercussão funcional">Doença reumatológica com repercussão funcional</option>
+                        <option value="outra condição clínica persistente">Outra condição clínica persistente</option>
+                      </select>
+                    </label>
+
+                    <label class="field">
+                      <span>CID informado</span>
+                      <input type="text" id="clinicalCid" placeholder="Ex.: M79.7">
+                    </label>
+
+                    <label class="field">
+                      <span>Possui laudo médico?</span>
+                      <select id="clinicalMedicalReport">
+                        <option value="">Selecione</option>
+                        <option value="sim">Sim</option>
+                        <option value="nao">Não</option>
+                      </select>
+                    </label>
+
+                    <label class="field">
+                      <span>Possui avaliação multidisciplinar?</span>
+                      <select id="clinicalMultidisciplinary">
+                        <option value="">Selecione</option>
+                        <option value="sim">Sim</option>
+                        <option value="nao">Não</option>
+                      </select>
+                    </label>
+
+                    <label class="field">
+                      <span>Condição é persistente?</span>
+                      <select id="clinicalPersistent">
+                        <option value="">Selecione</option>
+                        <option value="sim">Sim</option>
+                        <option value="nao">Não</option>
+                      </select>
+                    </label>
+
+                    <label class="field">
+                      <span>Grau de limitação</span>
+                      <select id="clinicalLimitationGrade">
+                        <option value="">Selecione</option>
+                        <option value="leve">Leve</option>
+                        <option value="moderado">Moderado</option>
+                        <option value="grave">Grave</option>
+                      </select>
+                    </label>
+
+                    <label class="field">
+                      <span>Impacta atividades diárias?</span>
+                      <select id="clinicalDailyImpact">
+                        <option value="">Selecione</option>
+                        <option value="sim">Sim</option>
+                        <option value="nao">Não</option>
+                      </select>
+                    </label>
+                  </div>
+
+                  <div class="field-group">
+                    <div class="group-title">Limitações funcionais observadas</div>
+                    <div class="toggle-grid">
+                      <label class="toggle-chip"><input type="checkbox" name="clinicalMarker" value="dor" data-label="dor persistente com repercussão funcional"><span>Dor persistente com repercussão funcional</span></label>
+                      <label class="toggle-chip"><input type="checkbox" name="clinicalMarker" value="fadiga" data-label="fadiga ou exaustão frequente"><span>Fadiga ou exaustão frequente</span></label>
+                      <label class="toggle-chip"><input type="checkbox" name="clinicalMarker" value="esforco" data-label="redução da tolerância ao esforço"><span>Redução da tolerância ao esforço</span></label>
+                      <label class="toggle-chip"><input type="checkbox" name="clinicalMarker" value="ritmo" data-label="prejuízo de ritmo e produtividade funcional"><span>Prejuízo de ritmo funcional</span></label>
+                      <label class="toggle-chip"><input type="checkbox" name="clinicalMarker" value="sono" data-label="sono não reparador com repercussão diurna"><span>Sono não reparador com repercussão diurna</span></label>
+                      <label class="toggle-chip"><input type="checkbox" name="clinicalMarker" value="postura" data-label="dificuldade para manter postura ou permanência prolongada"><span>Dificuldade para manter postura prolongada</span></label>
+                      <label class="toggle-chip"><input type="checkbox" name="clinicalMarker" value="concentracao" data-label="prejuízo de concentração associado ao quadro clínico"><span>Prejuízo de concentração</span></label>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="module-form" data-module-form="visual">
+                <div class="step-section">
+                  <div class="section-head">
+                    <div>
+                      <span class="section-step">Passo 1</span>
+                      <h3>Achados visuais objetivos</h3>
+                    </div>
+                    <span class="section-chip">Acuidade e campo visual em seleção guiada</span>
+                  </div>
+
+                  <div class="helper-box">
+                    <strong>Como o módulo visual decide</strong>
+                    <p>O enquadramento visual é guiado primeiro pelos dados objetivos, como acuidade visual corrigida, campo visual e condição sensorial reconhecida. Se os achados forem normais, o sistema não mantém o caso como PCD apenas por impacto referido.</p>
+                  </div>
+
+                  <div class="field-grid three-columns">
+                    <label class="field">
+                      <span>Achado visual principal</span>
+                      <select id="visualPrimaryFinding">
+                        <option value="">Selecione</option>
+                        <option value="cegueira_bilateral">Cegueira bilateral</option>
+                        <option value="baixa_visao_bilateral">Baixa visão bilateral</option>
+                        <option value="campo_visual_reduzido">Redução importante de campo visual</option>
+                        <option value="visao_monocular">Visão monocular</option>
+                        <option value="outra_alteracao_visual">Outra alteração visual persistente</option>
+                      </select>
+                    </label>
+
+                    <label class="field">
+                      <span>Lateralidade</span>
+                      <select id="visualLaterality">
+                        <option value="">Selecione</option>
+                        <option value="direita">Direita</option>
+                        <option value="esquerda">Esquerda</option>
+                        <option value="bilateral">Bilateral</option>
+                      </select>
+                    </label>
+
+                    <label class="field">
+                      <span>Condição permanente?</span>
+                      <select id="visualPermanent">
+                        <option value="">Selecione</option>
+                        <option value="sim">Sim</option>
+                        <option value="nao">Não</option>
+                      </select>
+                    </label>
+
+                    <label class="field">
+                      <span>Documentação objetiva disponível?</span>
+                      <select id="visualSupportDocs">
+                        <option value="">Selecione</option>
+                        <option value="sim">Sim</option>
+                        <option value="nao">Não</option>
+                      </select>
+                    </label>
+
+                    <label class="field">
+                      <span>Grau do impacto funcional</span>
+                      <select id="visualImpactGrade">
+                        <option value="">Selecione</option>
+                        <option value="ausente">Ausente</option>
+                        <option value="leve">Leve</option>
+                        <option value="moderado">Moderado</option>
+                        <option value="grave">Grave</option>
+                      </select>
+                    </label>
+
+                    <label class="field">
+                      <span>CID informado</span>
+                      <input type="text" id="visualCid" placeholder="Ex.: H54.0">
+                    </label>
+
+                    <label class="field">
+                      <span>Acuidade visual OD (melhor correção)</span>
+                      <select id="visualAcuityOD">
+                        <option value="">Selecione</option>
+                        <option value="normal_20_40">20/20 a 20/40</option>
+                        <option value="moderada_20_70">20/70 a 20/100</option>
+                        <option value="baixa_20_200">20/80 a 20/200</option>
+                        <option value="muito_baixa_20_400">Pior que 20/200 e melhor que 20/400</option>
+                        <option value="cegueira_20_400">20/400</option>
+                        <option value="cegueira_menor_20_400">Pior que 20/400</option>
+                        <option value="sem_percepcao_util">Sem percepção visual útil</option>
+                      </select>
+                    </label>
+
+                    <label class="field">
+                      <span>Acuidade visual OE (melhor correção)</span>
+                      <select id="visualAcuityOE">
+                        <option value="">Selecione</option>
+                        <option value="normal_20_40">20/20 a 20/40</option>
+                        <option value="moderada_20_70">20/70 a 20/100</option>
+                        <option value="baixa_20_200">20/80 a 20/200</option>
+                        <option value="muito_baixa_20_400">Pior que 20/200 e melhor que 20/400</option>
+                        <option value="cegueira_20_400">20/400</option>
+                        <option value="cegueira_menor_20_400">Pior que 20/400</option>
+                        <option value="sem_percepcao_util">Sem percepção visual útil</option>
+                      </select>
+                    </label>
+
+                    <label class="field">
+                      <span>Campimetria alterada?</span>
+                      <select id="visualFieldChanged">
+                        <option value="">Selecione</option>
+                        <option value="nao">Não</option>
+                        <option value="sim">Sim</option>
+                      </select>
+                    </label>
+
+                    <label class="field" id="visualFieldExtentField">
+                      <span>Extensão do campo visual</span>
+                      <select id="visualFieldExtent">
+                        <option value="">Selecione</option>
+                        <option value="ate_60">Somatório binocular igual ou menor que 60°</option>
+                        <option value="restrito_importante">Restrição importante sem medida conclusiva</option>
+                      </select>
+                    </label>
+                  </div>
+
+                  <div class="field-group">
+                    <div class="group-title">Limitações funcionais visuais observadas</div>
+                    <div class="toggle-grid">
+                      <label class="toggle-chip"><input type="checkbox" name="visualMarker" value="leitura" data-label="dificuldade para leitura contínua de textos e documentos"><span>Leitura contínua de textos e documentos</span></label>
+                      <label class="toggle-chip"><input type="checkbox" name="visualMarker" value="detalhes" data-label="prejuízo para reconhecer detalhes, faces ou sinais"><span>Reconhecimento de detalhes, faces ou sinais</span></label>
+                      <label class="toggle-chip"><input type="checkbox" name="visualMarker" value="mobilidade" data-label="dificuldade de mobilidade e orientação espacial"><span>Mobilidade e orientação espacial</span></label>
+                      <label class="toggle-chip"><input type="checkbox" name="visualMarker" value="obstaculos" data-label="redução da percepção de obstáculos e desníveis"><span>Percepção de obstáculos e desníveis</span></label>
+                      <label class="toggle-chip"><input type="checkbox" name="visualMarker" value="tela" data-label="dificuldade para uso de telas e materiais visuais"><span>Uso de telas e materiais visuais</span></label>
+                      <label class="toggle-chip"><input type="checkbox" name="visualMarker" value="seguranca" data-label="prejuízo para deslocamento com segurança"><span>Deslocamento com segurança</span></label>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="module-form" data-module-form="intelectual">
+                <div class="step-section">
+                  <div class="section-head">
+                    <div>
+                      <span class="section-step">Passo 1</span>
+                      <h3>Funcionamento intelectual e adaptativo</h3>
+                    </div>
+                    <span class="section-chip">Suporte e adaptação em seleção guiada</span>
+                  </div>
+
+                  <div class="field-grid three-columns">
+                    <label class="field">
+                      <span>Perfil funcional predominante</span>
+                      <select id="intellectualFunctionalProfile">
+                        <option value="">Selecione</option>
+                        <option value="comprometimento adaptativo com suporte intermitente">Comprometimento adaptativo com suporte intermitente</option>
+                        <option value="comprometimento adaptativo com suporte frequente">Comprometimento adaptativo com suporte frequente</option>
+                        <option value="comprometimento adaptativo com suporte contínuo">Comprometimento adaptativo com suporte contínuo</option>
+                      </select>
+                    </label>
+
+                    <label class="field">
+                      <span>Caráter permanente?</span>
+                      <select id="intellectualPermanent">
+                        <option value="">Selecione</option>
+                        <option value="sim">Sim</option>
+                        <option value="nao">Não</option>
+                      </select>
+                    </label>
+
+                    <label class="field">
+                      <span>Início no período do desenvolvimento?</span>
+                      <select id="intellectualDevelopmental">
+                        <option value="">Selecione</option>
+                        <option value="sim">Sim</option>
+                        <option value="nao">Não</option>
+                        <option value="desconhecido">Desconhecido</option>
+                      </select>
+                    </label>
+
+                    <label class="field">
+                      <span>Documentação de suporte disponível?</span>
+                      <select id="intellectualSupportDocs">
+                        <option value="">Selecione</option>
+                        <option value="sim">Sim</option>
+                        <option value="nao">Não</option>
+                      </select>
+                    </label>
+
+                    <label class="field">
+                      <span>Grau do impacto funcional</span>
+                      <select id="intellectualImpactGrade">
+                        <option value="">Selecione</option>
+                        <option value="ausente">Ausente</option>
+                        <option value="leve">Leve</option>
+                        <option value="moderado">Moderado</option>
+                        <option value="grave">Grave</option>
+                      </select>
+                    </label>
+
+                    <label class="field">
+                      <span>Necessidade de suporte no cotidiano e trabalho</span>
+                      <select id="intellectualSupportNeed">
+                        <option value="">Selecione</option>
+                        <option value="eventual">Eventual</option>
+                        <option value="frequente">Frequente</option>
+                        <option value="contínuo">Contínuo</option>
+                      </select>
+                    </label>
+
+                    <label class="field">
+                      <span>CID informado</span>
+                      <input type="text" id="intellectualCid" placeholder="Ex.: F79">
+                    </label>
+                  </div>
+
+                  <div class="field-group">
+                    <div class="group-title">Habilidades adaptativas com limitação relevante</div>
+                    <div class="toggle-grid">
+                      <label class="toggle-chip"><input type="checkbox" name="intellectualMarker" value="instrucoes" data-label="dificuldade para compreender e executar instruções"><span>Compreensão e execução de instruções</span></label>
+                      <label class="toggle-chip"><input type="checkbox" name="intellectualMarker" value="aprendizagem" data-label="limitação para aprendizagem aplicada e generalização"><span>Aprendizagem aplicada e generalização</span></label>
+                      <label class="toggle-chip"><input type="checkbox" name="intellectualMarker" value="rotina" data-label="necessidade de suporte para organização de rotina"><span>Organização de rotina</span></label>
+                      <label class="toggle-chip"><input type="checkbox" name="intellectualMarker" value="comunicacao" data-label="limitação de comunicação funcional"><span>Comunicação funcional</span></label>
+                      <label class="toggle-chip"><input type="checkbox" name="intellectualMarker" value="autonomia" data-label="redução de autonomia em atividades do cotidiano"><span>Autonomia em atividades do cotidiano</span></label>
+                      <label class="toggle-chip"><input type="checkbox" name="intellectualMarker" value="julgamento" data-label="prejuízo de julgamento prático e segurança"><span>Julgamento prático e segurança</span></label>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="module-form" data-module-form="psicossocial">
+                <div class="step-section">
+                  <div class="section-head">
+                    <div>
+                      <span class="section-step">Passo 1</span>
+                      <h3>Persistência do quadro e participação social</h3>
+                    </div>
+                    <span class="section-chip">Restrição psicossocial guiada</span>
+                  </div>
+
+                  <div class="field-grid three-columns">
+                    <label class="field">
+                      <span>Quadro mental/psicossocial predominante</span>
+                      <select id="psychosocialCondition">
+                        <option value="">Selecione</option>
+                        <option value="transtorno mental persistente com restrição relevante">Transtorno mental persistente com restrição relevante</option>
+                        <option value="quadro afetivo recorrente com repercussão funcional">Quadro afetivo recorrente com repercussão funcional</option>
+                        <option value="quadro psicótico persistente com repercussão funcional">Quadro psicótico persistente com repercussão funcional</option>
+                        <option value="outra condição psicossocial persistente">Outra condição psicossocial persistente</option>
+                      </select>
+                    </label>
+
+                    <label class="field">
+                      <span>Persistente?</span>
+                      <select id="psychosocialPersistent">
+                        <option value="">Selecione</option>
+                        <option value="sim">Sim</option>
+                        <option value="nao">Não</option>
+                      </select>
+                    </label>
+
+                    <label class="field">
+                      <span>Acompanhamento terapêutico/documental?</span>
+                      <select id="psychosocialFollowUp">
+                        <option value="">Selecione</option>
+                        <option value="sim">Sim</option>
+                        <option value="nao">Não</option>
+                      </select>
+                    </label>
+
+                    <label class="field">
+                      <span>Documentação de suporte disponível?</span>
+                      <select id="psychosocialSupportDocs">
+                        <option value="">Selecione</option>
+                        <option value="sim">Sim</option>
+                        <option value="nao">Não</option>
+                      </select>
+                    </label>
+
+                    <label class="field">
+                      <span>Há restrição de participação social/laboral?</span>
+                      <select id="psychosocialParticipation">
+                        <option value="">Selecione</option>
+                        <option value="sim">Sim</option>
+                        <option value="nao">Não</option>
+                      </select>
+                    </label>
+
+                    <label class="field">
+                      <span>Grau do impacto funcional</span>
+                      <select id="psychosocialImpactGrade">
+                        <option value="">Selecione</option>
+                        <option value="ausente">Ausente</option>
+                        <option value="leve">Leve</option>
+                        <option value="moderado">Moderado</option>
+                        <option value="grave">Grave</option>
+                      </select>
+                    </label>
+
+                    <label class="field">
+                      <span>CID informado</span>
+                      <input type="text" id="psychosocialCid" placeholder="Ex.: F33.2">
+                    </label>
+                  </div>
+
+                  <div class="field-group">
+                    <div class="group-title">Restrições psicossociais relevantes</div>
+                    <div class="toggle-grid">
+                      <label class="toggle-chip"><input type="checkbox" name="psychosocialMarker" value="interacao" data-label="restrição de interação social no trabalho"><span>Interação social no trabalho</span></label>
+                      <label class="toggle-chip"><input type="checkbox" name="psychosocialMarker" value="pressao" data-label="baixa tolerância a pressão, ritmo ou exigência emocional"><span>Tolerância a pressão e ritmo</span></label>
+                      <label class="toggle-chip"><input type="checkbox" name="psychosocialMarker" value="mudancas" data-label="dificuldade de adaptação a mudanças e imprevisibilidade"><span>Adaptação a mudanças e imprevisibilidade</span></label>
+                      <label class="toggle-chip"><input type="checkbox" name="psychosocialMarker" value="autorregulacao" data-label="prejuízo de autorregulação emocional ou comportamental"><span>Autorregulação emocional/comportamental</span></label>
+                      <label class="toggle-chip"><input type="checkbox" name="psychosocialMarker" value="assiduidade" data-label="comprometimento de assiduidade e regularidade funcional"><span>Assiduidade e regularidade funcional</span></label>
+                      <label class="toggle-chip"><input type="checkbox" name="psychosocialMarker" value="autonomia" data-label="redução de autonomia para manter participação laboral em igualdade de condições"><span>Autonomia para manter participação laboral</span></label>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <div class="form-actions">
+                <button class="primary-button" type="submit" id="submitAssessment">Classificar caso</button>
+                <button class="ghost-button" type="button" id="resetModule">Limpar módulo</button>
+              </div>
+            </form>
+          </section>
+
+          <aside class="result-stage">
+            <div class="result-card neutral" id="resultCard">
+              <span class="result-kicker">Resultado atual</span>
+              <h3 id="resultTitle">Selecione um módulo e preencha os dados clínicos</h3>
+              <p id="resultMessage">
+                O sistema só gera descrição técnica e limitações funcionais quando o caso enquadra conforme a lógica clínico-funcional definida.
+              </p>
+              <ul class="fact-list" id="resultFacts"></ul>
+            </div>
+
+            <section class="output-card hidden" id="descriptionBlock">
+              <h4>Descrição da deficiência e CID</h4>
+              <p id="descriptionText"></p>
+            </section>
+
+            <section class="output-card hidden" id="limitationsBlock">
+              <h4>Limitações funcionais</h4>
+              <p id="limitationsText"></p>
+            </section>
+
+            <section class="output-card hidden" id="reportBlock">
+              <h4>Laudo caracterizador sugerido</h4>
+              <p id="reportText"></p>
+            </section>
+
+            <section class="output-card hidden" id="pdfBlock">
+              <h4>Emissao do laudo e anexos</h4>
+              <p>Quando o caso enquadrar, voce pode abrir o pacote de impressao com anexos vinculados ou salvar o PDF final do laudo para arquivo e envio.</p>
+              <div class="form-actions top-gap">
+                <button class="primary-button" type="button" id="downloadPdfButton">Imprimir laudo e anexos</button>
+                <button class="ghost-button" type="button" id="savePdfButton">Salvar PDF do laudo</button>
+              </div>
+              <p class="status-note" id="pdfActionStatus"></p>
+            </section>
+
+            <section class="output-card warning hidden" id="supportBlock">
+              <h4>Observações técnicas e documentação complementar</h4>
+              <p id="supportText"></p>
+            </section>
+          </aside>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="app.js?v=20260421d" defer></script>
+</body>
+</html>
