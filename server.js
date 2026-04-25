@@ -143,6 +143,13 @@ const MIME_TYPES = {
   ".ico": "image/x-icon"
 };
 
+const STATIC_IMAGE_ALIASES = {
+  "/img/logo.png": ["img/logo.png", "logo.png"],
+  "/img/foto.png": ["img/foto.png", "foto.png"],
+  "/logo.png": ["logo.png", "img/logo.png"],
+  "/foto.png": ["foto.png", "img/foto.png"]
+};
+
 const sessions = new Map();
 
 ensureDataStore();
@@ -1122,6 +1129,10 @@ const server = http.createServer(async (req, res) => {
     if (pathname === "/official_page1.png") {
       return serveFile(res, path.join(ROOT_DIR, "official_page1.png"));
     }
+    const aliasedStaticAsset = resolveAliasedStaticAsset(pathname);
+    if (aliasedStaticAsset) {
+      return serveFile(res, aliasedStaticAsset);
+    }
     if (pathname.startsWith("/img/")) {
       const filePath = path.join(ROOT_DIR, pathname);
       if (!filePath.startsWith(path.join(ROOT_DIR, "img"))) {
@@ -1151,6 +1162,22 @@ function ensureDataStore() {
   }
   ensureDefaultAdmin();
   ensureDefaultPlanCatalogFile();
+}
+
+function resolveAliasedStaticAsset(pathname) {
+  const candidates = STATIC_IMAGE_ALIASES[pathname];
+  if (!candidates || !candidates.length) {
+    return "";
+  }
+
+  for (const candidate of candidates) {
+    const filePath = path.join(ROOT_DIR, ...String(candidate).split("/"));
+    if (fs.existsSync(filePath)) {
+      return filePath;
+    }
+  }
+
+  return "";
 }
 
 function ensureDefaultAdmin() {
