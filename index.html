@@ -1,11 +1,14 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8">
+  <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="davicore-app-origin" content="https://enquadra-pcd-saas.onrender.com">
   <title>DaviCore Health | Planos e acesso profissional</title>
-  <link rel="stylesheet" href="style.css?v=20260421d">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=20260425a">
 </head>
 <body>
   <div class="auth-shell" id="authShell">
@@ -29,9 +32,9 @@
       <section class="sales-landing" id="salesLanding">
         <div class="sales-hero">
           <div class="sales-hero-copy">
-            <span class="sales-brand-chip">Plataforma profissional</span>
-            <h3>Tecnologia para apoio &agrave; caracteriza&ccedil;&atilde;o de PCD com seguran&ccedil;a e responsabilidade profissional</h3>
-            <p>Sistema inteligente para apoio t&eacute;cnico na descri&ccedil;&atilde;o funcional, desenvolvido para uso por profissionais de sa&uacute;de e empresas.</p>
+            <span class="sales-brand-chip">Plataforma corporativa</span>
+            <h3>Caracteriza&ccedil;&atilde;o de PCD com padr&atilde;o corporativo, clareza documental e seguran&ccedil;a t&eacute;cnica</h3>
+            <p>Solu&ccedil;&atilde;o desenvolvida para m&eacute;dicos e empresas que precisam padronizar a an&aacute;lise funcional, fortalecer a qualidade do laudo e ganhar previsibilidade operacional.</p>
             <div class="sales-hero-actions">
               <button class="primary-button sales-primary-button" type="button" id="heroPlansButton">Conhecer planos</button>
             </div>
@@ -40,7 +43,7 @@
             <div class="hero-insight-visual" id="heroInsightVisual" aria-hidden="true">
               <span class="hero-insight-chip">Vis&atilde;o do produto</span>
               <strong class="hero-insight-title" id="heroInsightTitle">Triagem guiada por tipo de defici&ecirc;ncia</strong>
-              <p class="hero-insight-text" id="heroInsightText">Campos mais objetivos, menos retrabalho e descri&ccedil;&otilde;es t&eacute;cnicas conduzidas pelo pr&oacute;prio sistema.</p>
+              <p class="hero-insight-text" id="heroInsightText">Campos estruturados, menos retrabalho e descri&ccedil;&otilde;es t&eacute;cnico-funcionais com padr&atilde;o mais consistente.</p>
               <div class="hero-insight-dots" id="heroInsightDots">
                 <span class="hero-insight-dot is-active"></span>
                 <span class="hero-insight-dot"></span>
@@ -62,7 +65,7 @@
             </article>
             <article class="support-detail-card">
               <strong>Plano M&eacute;dico</strong>
-              <p>Modelo flex&iacute;vel com assinatura recorrente mensal de 30 laudos ou pacotes avulsos, sempre com valida&ccedil;&atilde;o de CRM e responsabilidade t&eacute;cnica vinculada ao m&eacute;dico autenticado.</p>
+              <p>Assinatura recorrente mensal com 30 laudos ou pacotes avulsos, sempre com valida&ccedil;&atilde;o de CRM e responsabilidade t&eacute;cnica vinculada ao m&eacute;dico autenticado.</p>
             </article>
             <article class="support-detail-card">
               <strong>Modo Demonstra&ccedil;&atilde;o</strong>
@@ -101,9 +104,9 @@
                 <span class="offer-chip success">M&eacute;dico</span>
                 <h4>Plano M&eacute;dico</h4>
                 <p class="offer-subtitle">Exclusivo para m&eacute;dicos com CRM v&aacute;lido</p>
-                <p class="offer-price">Assinatura mensal ou pacote avulso</p>
+                <p class="offer-price">Assinatura recorrente ou pacote avulso</p>
               </div>
-              <p>Exclusivo para m&eacute;dicos com CRM v&aacute;lido. Escolha entre assinatura recorrente com 30 laudos por m&ecirc;s ou pacotes avulsos por volume.</p>
+              <p>Exclusivo para m&eacute;dicos com CRM v&aacute;lido. Escolha entre assinatura mensal com 30 laudos ou pacotes avulsos conforme sua demanda.</p>
               <ul class="offer-list">
                 <li>Assinatura recorrente com 30 laudos mensais</li>
                 <li>Pacote avulso com 10 documentos</li>
@@ -2054,23 +2057,23 @@
             </div>
 
             <section class="output-card hidden" id="descriptionBlock">
-              <h4>Descrição da deficiência e CID</h4>
+              <h4>Descrição clínico-funcional e CID</h4>
               <p id="descriptionText"></p>
             </section>
 
             <section class="output-card hidden" id="limitationsBlock">
-              <h4>Limitações funcionais</h4>
+              <h4>Limitações funcionais e impacto laboral</h4>
               <p id="limitationsText"></p>
             </section>
 
             <section class="output-card hidden" id="reportBlock">
-              <h4>Laudo caracterizador sugerido</h4>
+              <h4>Sugestão de laudo técnico</h4>
               <p id="reportText"></p>
             </section>
 
             <section class="output-card hidden" id="pdfBlock">
-              <h4>Emissao do laudo e anexos</h4>
-              <p>Quando o caso enquadrar, voce pode abrir o pacote de impressao com anexos vinculados ou salvar o PDF final do laudo para arquivo e envio.</p>
+              <h4>Emissão do laudo e anexos</h4>
+              <p>Quando o caso enquadrar, você poderá abrir o pacote de impressão com anexos vinculados ou salvar o PDF final do laudo para arquivo e envio.</p>
               <div class="form-actions top-gap">
                 <button class="primary-button" type="button" id="downloadPdfButton">Imprimir laudo e anexos</button>
                 <button class="ghost-button" type="button" id="savePdfButton">Salvar PDF do laudo</button>
@@ -2088,6 +2091,6 @@
     </main>
   </div>
 
-  <script src="app.js?v=20260421d" defer></script>
+  <script src="app.js?v=20260425a" defer></script>
 </body>
 </html>

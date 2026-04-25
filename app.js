@@ -2416,15 +2416,32 @@ const startPcdDigital = () => {
   }
 
   function eligibleResult(payload) {
+    const description = buildOfficialDescriptionText(payload) || toPresentationText(payload && payload.description ? payload.description : "");
+    const limitations = buildOfficialLimitationsText({
+      ...(payload || {}),
+      description
+    }) || ensurePrintSentence(payload && payload.limitations ? payload.limitations : "");
+    const facts = Array.isArray(payload && payload.facts)
+      ? payload.facts.map((fact) => toPresentationText(fact)).filter(Boolean)
+      : [];
+    const supportNote = toPresentationText(payload && payload.supportNote ? payload.supportNote : "", true);
+    const enrichedPayload = {
+      ...(payload || {}),
+      description,
+      limitations,
+      facts,
+      supportNote
+    };
+
     return {
       status: "eligible",
       title: "Enquadra como PCD",
-      message: payload.message,
-      description: payload.description,
-      limitations: payload.limitations,
-      report: payload.report || buildCharacterizationReport(payload),
-      facts: payload.facts || [],
-      supportNote: payload.supportNote || ""
+      message: toPresentationText(payload && payload.message ? payload.message : ""),
+      description,
+      limitations,
+      report: payload && payload.report ? toPresentationText(payload.report, true) : buildCharacterizationReport(enrichedPayload),
+      facts,
+      supportNote
     };
   }
 
@@ -2432,19 +2449,19 @@ const startPcdDigital = () => {
     return {
       status: "review",
       title: "Necessita avaliação complementar",
-      message,
-      facts,
-      supportNote
+      message: toPresentationText(message),
+      facts: Array.isArray(facts) ? facts.map((fact) => toPresentationText(fact)).filter(Boolean) : [],
+      supportNote: toPresentationText(supportNote, true)
     };
   }
 
   function ineligibleResult(message, facts = [], supportNote = "") {
     return {
       status: "ineligible",
-      title: "Não enquadra",
-      message,
-      facts,
-      supportNote
+      title: "Não caracterizado como PCD conforme critérios técnicos",
+      message: toPresentationText(message) || "Não caracterizado como PCD conforme critérios técnicos.",
+      facts: Array.isArray(facts) ? facts.map((fact) => toPresentationText(fact)).filter(Boolean) : [],
+      supportNote: toPresentationText(supportNote, true)
     };
   }
 
@@ -2514,8 +2531,27 @@ const startPcdDigital = () => {
     }).format(value);
   }
 
+  const CID_DESCRIPTION_MAP = Object.freeze({
+    "S68.0": "Amputação traumática do polegar",
+    "H54.0": "Cegueira em ambos os olhos",
+    "M54.5": "Dor lombar baixa"
+  });
+
+  function normalizeCidCode(cid) {
+    return String(cid || "")
+      .trim()
+      .toUpperCase()
+      .replace(",", ".")
+      .replace(/\s+/g, "");
+  }
+
   function formatCid(cid) {
-    return cid || "não informado";
+    const normalized = normalizeCidCode(cid);
+    if (!normalized) {
+      return "não informado";
+    }
+    const description = CID_DESCRIPTION_MAP[normalized];
+    return description ? `${normalized} - ${description}` : normalized;
   }
 
   function formatDateForReport(value) {
@@ -9470,40 +9506,14 @@ const startPcdDigital = () => {
   }
 
   function buildOfficialLimitationsText(payload) {
-    if (state.activeModule === "auditiva") {
-      const summary = summarizeLabelsForLaudo(checkedLabels("audioImpactMarker"), 3);
-      return ensurePrintSentence(summary || "Apresenta limitação sensorial auditiva com prejuízo para compreensão da fala, comunicação em ambientes ruidosos e percepção de alertas sonoros");
+    const summary = stripTerminalPunctuation(buildCurrentFunctionalImpactSummary());
+    const occupationalImpact = stripTerminalPunctuation(buildCurrentOccupationalImpactText());
+
+    if (summary) {
+      return ensurePrintSentence(`Apresenta ${summary}, com impacto ocupacional em ${occupationalImpact}`);
     }
 
-    if (state.activeModule === "fisica") {
-      const grade = toPresentationText(functionalDegreeText(valueOf("physicalImpactGrade") || "moderado"));
-      const summary = summarizeLabelsForLaudo(checkedLabels("physicalFunctionItem"), 4);
-      const strengthSummary = buildPhysicalStrengthSummary();
-      const complements = [summary || "restrição para execução de tarefas e movimentos do segmento acometido", strengthSummary].filter(Boolean);
-      return ensurePrintSentence(`Apresenta limitação funcional ${grade}, com ${joinList(complements)}`);
-    }
-
-    if (state.activeModule === "visual") {
-      const summary = summarizeLabelsForLaudo(checkedLabels("visualMarker"), 4);
-      return ensurePrintSentence(summary || "Apresenta dificuldade para leitura, orientação espacial, percepção de detalhes e deslocamento com segurança");
-    }
-
-    if (state.activeModule === "clinicas") {
-      const summary = summarizeLabelsForLaudo(checkedLabels("clinicalMarker"), 4);
-      return ensurePrintSentence(summary || "Apresenta limitação funcional persistente em atividades diárias e laborais");
-    }
-
-    if (state.activeModule === "intelectual") {
-      const summary = summarizeLabelsForLaudo(checkedLabels("intellectualMarker"), 4);
-      return ensurePrintSentence(summary || "Apresenta dificuldade para compreensão de instruções, organização de rotina, autonomia funcional e participação em igualdade de condições");
-    }
-
-    if (state.activeModule === "psicossocial") {
-      const summary = summarizeLabelsForLaudo(checkedLabels("psychosocialMarker"), 4);
-      return ensurePrintSentence(summary || "Apresenta restrição de participação social e laboral em igualdade de condições");
-    }
-
-    return ensurePrintSentence(payload && payload.result ? payload.result.limitations : "");
+    return ensurePrintSentence(payload && payload.result ? payload.result.limitations : payload && payload.limitations ? payload.limitations : "");
   }
 
   function buildOfficialVisualSummary() {
@@ -10466,8 +10476,112 @@ const startPcdDigital = () => {
     return `acuidade visual de ${acuityOD} em OD e ${acuityOE} em OE${fieldChanged === "sim" ? ", associada a alteração de campo visual" : ""}`;
   }
 
+  function stripTerminalPunctuation(text) {
+    return toPresentationText(text).replace(/[.!?\s]+$/g, "");
+  }
+
+  function hasInformativeCidText(cid) {
+    const normalized = stripTerminalPunctuation(cid).toLowerCase();
+    return Boolean(normalized) && normalized !== "não informado";
+  }
+
+  function buildCurrentFunctionalImpactSummary() {
+    if (state.activeModule === "auditiva") {
+      const summary = stripTerminalPunctuation(summarizeLabelsForLaudo(checkedLabels("audioImpactMarker"), 3));
+      return summary
+        ? `repercussão funcional auditiva caracterizada por ${summary}`
+        : "repercussão funcional auditiva caracterizada por dificuldade para compreender fala em ambientes com ruído, necessidade frequente de repetição na comunicação e prejuízo para percepção de alertas sonoros";
+    }
+
+    if (state.activeModule === "fisica") {
+      const gradeLabel = {
+        leve: "leve",
+        moderado: "moderada",
+        grave: "grave"
+      }[valueOf("physicalImpactGrade")] || "moderada";
+      const summary = stripTerminalPunctuation(summarizeLabelsForLaudo(checkedLabels("physicalFunctionItem"), 4));
+      const strengthSummary = stripTerminalPunctuation(buildPhysicalStrengthSummary());
+      const complements = [summary, strengthSummary].filter(Boolean);
+      return complements.length
+        ? `limitação funcional ${gradeLabel}, com ${joinList(complements)}`
+        : `limitação funcional ${gradeLabel} do segmento corporal acometido`;
+    }
+
+    if (state.activeModule === "visual") {
+      const summary = stripTerminalPunctuation(summarizeLabelsForLaudo(checkedLabels("visualMarker"), 4));
+      return summary
+        ? `repercussão funcional visual caracterizada por ${summary}`
+        : "repercussão funcional visual caracterizada por dificuldade para leitura, orientação espacial, percepção de detalhes e deslocamento com segurança";
+    }
+
+    if (state.activeModule === "clinicas") {
+      const summary = stripTerminalPunctuation(summarizeLabelsForLaudo(checkedLabels("clinicalMarker"), 4));
+      return summary
+        ? `limitação funcional persistente caracterizada por ${summary}`
+        : "limitação funcional persistente caracterizada por dor, fadiga, redução da tolerância ao esforço ou prejuízo de ritmo funcional";
+    }
+
+    if (state.activeModule === "intelectual") {
+      const summary = stripTerminalPunctuation(summarizeLabelsForLaudo(checkedLabels("intellectualMarker"), 4));
+      return summary
+        ? `comprometimento adaptativo caracterizado por ${summary}`
+        : "comprometimento adaptativo caracterizado por dificuldade para compreensão de instruções, organização de rotina, autonomia funcional e segurança prática";
+    }
+
+    if (state.activeModule === "psicossocial") {
+      const summary = stripTerminalPunctuation(summarizeLabelsForLaudo(checkedLabels("psychosocialMarker"), 4));
+      return summary
+        ? `restrição psicossocial persistente caracterizada por ${summary}`
+        : "restrição psicossocial persistente caracterizada por prejuízo de autorregulação, interação social e sustentação da participação laboral";
+    }
+
+    return "";
+  }
+
+  function buildCurrentOccupationalImpactText() {
+    if (state.activeModule === "auditiva") {
+      return "atividades laborais que demandam comunicação verbal efetiva, atenção a comandos auditivos e percepção de sinais sonoros de alerta";
+    }
+
+    if (state.activeModule === "fisica") {
+      return "atividades que exigem uso contínuo, coordenação, força, amplitude de movimento, destreza manual, mobilidade ou estabilidade postural do segmento acometido";
+    }
+
+    if (state.activeModule === "visual") {
+      return "atividades que dependem de leitura, percepção de detalhes, orientação espacial, identificação de riscos e deslocamento com segurança";
+    }
+
+    if (state.activeModule === "clinicas") {
+      return "rotinas que exigem constância funcional, tolerância ao esforço, manutenção de ritmo e desempenho sustentado";
+    }
+
+    if (state.activeModule === "intelectual") {
+      return "atividades que exigem compreensão de instruções, organização de rotina, autonomia operacional e adaptação a demandas variáveis";
+    }
+
+    if (state.activeModule === "psicossocial") {
+      return "situações laborais que exigem regulação emocional, interação social estável, tolerância a pressão e manutenção regular da participação funcional";
+    }
+
+    return "atividades desempenhadas em ambiente de trabalho";
+  }
+
+  function buildPhysicalOriginNarrative() {
+    const basisKey = normalizedChoiceKey(valueOf("physicalClinicalBasis"));
+    if (basisKey.includes("congen")) return "condição de origem congênita";
+    if (basisKey.includes("traumat")) return "condição adquirida de etiologia traumática";
+    if (basisKey.includes("pos") && basisKey.includes("cirurg")) return "condição adquirida em contexto pós-cirúrgico";
+    if (basisKey.includes("neurolog")) return "condição adquirida de base neurológica";
+    if (basisKey.includes("vascular")) return "condição adquirida de base vascular";
+    if (basisKey.includes("outra")) return "condição adquirida de outra base clínica";
+    return "condição permanente";
+  }
+
   function buildOfficialDescriptionText(payload) {
     const cid = toPresentationText(formatCid(resolveCurrentCid())) || "Não informado";
+    const cidText = hasInformativeCidText(cid) ? ` (CID ${cid})` : "";
+    const impactSummary = stripTerminalPunctuation(buildCurrentFunctionalImpactSummary());
+    const occupationalImpact = stripTerminalPunctuation(buildCurrentOccupationalImpactText());
 
     if (state.activeModule === "auditiva") {
       const odAverage = getAudiometryAverage("OD");
@@ -10477,10 +10591,10 @@ const startPcdDigital = () => {
 
       if (rightTotal || leftTotal) {
         const side = rightTotal ? "direita" : "esquerda";
-        return `Trabalhador com deficiência auditiva, comprovada por audiometria sem uso de aparelho auditivo, apresentando surdez unilateral total em orelha ${side}, com média de ${formatDecimal(odAverage)} dB em OD e ${formatDecimal(oeAverage)} dB em OE. CID: ${cid}.`;
+        return `Trata-se de colaborador que apresenta deficiência auditiva permanente, com surdez unilateral total em orelha ${side}, comprovada por audiometria sem uso de aparelho auditivo e médias de ${formatDecimal(odAverage)} dB em OD e ${formatDecimal(oeAverage)} dB em OE${cidText}, apresentando ${impactSummary}, com impacto direto em ${occupationalImpact}.`;
       }
 
-      return `Trabalhador com deficiência auditiva, comprovada por audiometria sem uso de aparelho auditivo, apresentando perda auditiva bilateral parcial, com médias aritméticas de ${formatDecimal(odAverage)} dB em OD e ${formatDecimal(oeAverage)} dB em OE, aferidas nas frequências de 500 Hz, 1000 Hz, 2000 Hz e 3000 Hz. CID: ${cid}.`;
+      return `Trata-se de colaborador que apresenta deficiência auditiva permanente, comprovada por audiometria sem uso de aparelho auditivo, com perda auditiva bilateral parcial e médias aritméticas de ${formatDecimal(odAverage)} dB em OD e ${formatDecimal(oeAverage)} dB em OE, aferidas nas frequências de 500 Hz, 1000 Hz, 2000 Hz e 3000 Hz${cidText}, apresentando ${impactSummary}, com impacto direto em ${occupationalImpact}.`;
     }
 
     if (state.activeModule === "fisica") {
@@ -10490,32 +10604,34 @@ const startPcdDigital = () => {
       const segmentText = choiceKey.includes("amput")
         ? toPresentationText(composeAmputationFinding(scope, laterality, collectAmputationDetail(), valueOf("physicalAmputationLevel")))
         : toPresentationText(composeSegment(resolvePhysicalSegment(), laterality));
+      const originText = buildPhysicalOriginNarrative();
 
       if (choiceKey.includes("amput")) {
-        return `Deficiência física permanente por perda anatômica em ${segmentText}. CID: ${cid}.`;
+        return `Trata-se de colaborador que apresenta ${lowerFirstPresentation(segmentText)}${cidText}, ${originText}, apresentando ${impactSummary}, com impacto direto em ${occupationalImpact}.`;
       }
 
-      const conditionText = lowerFirstPresentation(valueOf("physicalConditionType") || "alteração física permanente");
-      return `Deficiência física permanente por ${conditionText} em ${segmentText}. CID: ${cid}.`;
+      const conditionText = lowerFirstPresentation(labelForSelectValue("physicalConditionType") || "alteração física permanente");
+      return `Trata-se de colaborador que apresenta ${conditionText} em ${segmentText}${cidText}, ${originText}, apresentando ${impactSummary}, com impacto direto em ${occupationalImpact}.`;
     }
 
     if (state.activeModule === "visual") {
-      return `Deficiência visual permanente com ${buildOfficialVisualSummary()}. CID: ${cid}.`;
+      return `Trata-se de colaborador que apresenta deficiência visual permanente, com ${buildOfficialVisualSummary()}${cidText}, apresentando ${impactSummary}, com impacto direto em ${occupationalImpact}.`;
     }
 
     if (state.activeModule === "clinicas") {
-      const condition = lowerFirstPresentation(normalizedText("clinicalCondition") || "condição clínica persistente");
-      const grade = lowerFirstPresentation(valueOf("clinicalLimitationGrade") || "relevante");
-      return `Condição clínica persistente compatível com ${condition}, associada a limitação funcional ${grade}. CID: ${cid}.`;
+      const condition = lowerFirstPresentation(labelForSelectValue("clinicalCondition") || normalizedText("clinicalCondition") || "condição clínica persistente");
+      const grade = lowerFirstPresentation(labelForSelectValue("clinicalLimitationGrade") || valueOf("clinicalLimitationGrade") || "relevante");
+      return `Trata-se de colaborador que apresenta condição clínica persistente compatível com ${condition}${cidText}, associada a limitação funcional de intensidade ${grade}, apresentando ${impactSummary}, com impacto direto em ${occupationalImpact}.`;
     }
 
     if (state.activeModule === "intelectual") {
       const supportNeed = lowerFirstPresentation(labelForSelectValue("intellectualSupportNeed") || "relevante");
-      return `Deficiência intelectual permanente, com comprometimento do funcionamento intelectual e das habilidades adaptativas, demandando suporte ${supportNeed}. CID: ${cid}.`;
+      return `Trata-se de colaborador que apresenta deficiência intelectual permanente${cidText}, com comprometimento do funcionamento intelectual e das habilidades adaptativas, demandando suporte ${supportNeed} e apresentando ${impactSummary}, com impacto direto em ${occupationalImpact}.`;
     }
 
     if (state.activeModule === "psicossocial") {
-      return `Deficiência mental/psicossocial persistente, com restrição relevante de participação social e laboral. CID: ${cid}.`;
+      const condition = lowerFirstPresentation(labelForSelectValue("psychosocialCondition") || normalizedText("psychosocialCondition") || "quadro mental ou psicossocial persistente");
+      return `Trata-se de colaborador que apresenta ${condition}${cidText}, com restrição persistente de participação social e laboral, apresentando ${impactSummary}, com impacto direto em ${occupationalImpact}.`;
     }
 
     return toPresentationText(payload && payload.result ? payload.result.description : "");
@@ -11695,14 +11811,14 @@ const startPcdDigital = () => {
   function buildCharacterizationReport(payload) {
     const attachments = collectPrintPackageFiles();
     const reportSections = [
-      "Ap\u00f3s an\u00e1lise t\u00e9cnico-funcional dos dados cl\u00ednicos estruturados e dos crit\u00e9rios aplic\u00e1veis ao caso, conclui-se pelo enquadramento como pessoa com defici\u00eancia para fins de caracteriza\u00e7\u00e3o ocupacional.",
-      `Descri\u00e7\u00e3o da defici\u00eancia e CID: ${toPresentationText(payload.description || "")}`,
-      `Limita\u00e7\u00f5es funcionais: ${toPresentationText(payload.limitations || "")}`,
-      `Conclus\u00e3o t\u00e9cnico-funcional: ${toPresentationText(payload.message || "")}`
+      "Ap\u00f3s an\u00e1lise t\u00e9cnico-funcional estruturada dos achados cl\u00ednicos, dados objetivos e repercuss\u00f5es ocupacionais informadas, conclui-se pela presen\u00e7a de elementos compat\u00edveis com a caracteriza\u00e7\u00e3o de pessoa com defici\u00eancia para fins ocupacionais.",
+      `Descri\u00e7\u00e3o cl\u00ednico-funcional: ${toPresentationText(payload.description || "")}`,
+      `Limita\u00e7\u00f5es funcionais e laborais: ${toPresentationText(payload.limitations || "")}`,
+      `Conclus\u00e3o t\u00e9cnica: ${toPresentationText(payload.message || "")}`
     ];
 
     if (payload.supportNote) {
-      reportSections.push(`Observa\u00e7\u00f5es t\u00e9cnicas e documenta\u00e7\u00e3o complementar: ${toPresentationText(payload.supportNote)}`);
+      reportSections.push(`Observa\u00e7\u00f5es t\u00e9cnicas e documenta\u00e7\u00e3o complementar: ${toPresentationText(payload.supportNote, true)}`);
     }
 
     if (attachments.length) {
@@ -15682,9 +15798,10 @@ const startPcdDigital = () => {
   function initHeroInsights() {
     const titleElement = document.getElementById("heroInsightTitle");
     const textElement = document.getElementById("heroInsightText");
+    const visual = document.getElementById("heroInsightVisual");
     const dots = Array.from(document.querySelectorAll("#heroInsightDots .hero-insight-dot"));
 
-    if (!titleElement || !textElement || !dots.length || state.heroInsightsStarted) {
+    if (!titleElement || !textElement || !visual || !dots.length || state.heroInsightsStarted) {
       return;
     }
 
@@ -15693,33 +15810,48 @@ const startPcdDigital = () => {
     const insights = [
       {
         title: "Triagem guiada por tipo de deficiência",
-        text: "Campos mais objetivos, menos retrabalho e descrições técnicas conduzidas pelo próprio sistema."
+        text: "Campos estruturados, menos retrabalho e descrições técnico-funcionais com padrão mais consistente."
       },
       {
-        title: "Fluxo comercial separado por perfil",
-        text: "Empresa, médico e administrador entram por jornadas diferentes, com regras de acesso mais claras."
+        title: "Fluxos separados por perfil de contratação",
+        text: "Empresa, médico e administração acessam jornadas distintas, com governança e permissões mais claras."
       },
       {
-        title: "Demonstração assistida sem emissão",
-        text: "A versão demo apresenta os recursos por etapas, sem liberar classificação, assinatura ou impressão."
+        title: "Laudo melhor estruturado desde o início",
+        text: "O sistema conduz a coleta essencial para sustentar descrição clínica, limitações funcionais e documentação complementar."
       }
     ];
 
     let index = 0;
-    const render = () => {
+    const render = (animate = false) => {
       const item = insights[index];
-      titleElement.textContent = item.title;
-      textElement.textContent = item.text;
-      dots.forEach((dot, dotIndex) => {
-        dot.classList.toggle("is-active", dotIndex === index);
-      });
+      const commit = () => {
+        titleElement.textContent = item.title;
+        textElement.textContent = item.text;
+        dots.forEach((dot, dotIndex) => {
+          dot.classList.toggle("is-active", dotIndex === index);
+        });
+      };
+
+      if (!animate) {
+        commit();
+        return;
+      }
+
+      visual.classList.add("is-transitioning");
+      window.setTimeout(() => {
+        commit();
+        window.requestAnimationFrame(() => {
+          visual.classList.remove("is-transitioning");
+        });
+      }, 170);
     };
 
     render();
     window.setInterval(() => {
       index = (index + 1) % insights.length;
-      render();
-    }, 3800);
+      render(true);
+    }, 4200);
   }
 
   function toUsernameSeed(value) {
@@ -16280,7 +16412,9 @@ const startPcdDigital = () => {
       `;
     }
 
-    setText(".sales-brand-chip", "Plataforma profissional");
+    setText(".sales-brand-chip", "Plataforma corporativa");
+    setText(".sales-hero-copy h3", "Caracterização de PCD com padrão corporativo, clareza documental e segurança técnica.");
+    setText(".sales-hero-copy p", "Solução desenvolvida para médicos e empresas que precisam padronizar a análise funcional, fortalecer a qualidade do laudo e ganhar previsibilidade operacional.");
 
     setHtml(".sales-hero-actions", `
       <button class="primary-button sales-primary-button" type="button" id="heroPlansButton">Conhecer planos</button>
@@ -16290,7 +16424,7 @@ const startPcdDigital = () => {
       <div class="hero-insight-visual" id="heroInsightVisual" aria-hidden="true">
         <span class="hero-insight-chip">Vis&atilde;o do produto</span>
         <strong class="hero-insight-title" id="heroInsightTitle">Triagem guiada por tipo de defici&ecirc;ncia</strong>
-        <p class="hero-insight-text" id="heroInsightText">Campos mais objetivos, menos retrabalho e descri&ccedil;&otilde;es t&eacute;cnicas conduzidas pelo pr&oacute;prio sistema.</p>
+        <p class="hero-insight-text" id="heroInsightText">Campos estruturados, menos retrabalho e descri&ccedil;&otilde;es t&eacute;cnico-funcionais com padr&atilde;o mais consistente.</p>
         <div class="hero-insight-dots" id="heroInsightDots">
           <span class="hero-insight-dot is-active"></span>
           <span class="hero-insight-dot"></span>
@@ -16311,7 +16445,7 @@ const startPcdDigital = () => {
         </article>
         <article class="support-detail-card">
           <strong>Plano M&eacute;dico</strong>
-          <p>Modelo por consumo, com pacotes de documentos, valida&ccedil;&atilde;o de CRM e responsabilidade t&eacute;cnica vinculada ao m&eacute;dico autenticado.</p>
+          <p>Assinatura recorrente mensal com 30 laudos ou pacotes avulsos, sempre com valida&ccedil;&atilde;o de CRM e responsabilidade t&eacute;cnica vinculada ao m&eacute;dico autenticado.</p>
         </article>
         <article class="support-detail-card">
           <strong>Modo Demonstra&ccedil;&atilde;o</strong>
@@ -16366,16 +16500,17 @@ const startPcdDigital = () => {
           <span class="offer-chip success">M&eacute;dico</span>
           <h4>Plano M&eacute;dico</h4>
           <p class="offer-subtitle">Exclusivo para m&eacute;dicos com CRM v&aacute;lido</p>
-          <p class="offer-price">Pagamento por emiss&atilde;o</p>
+          <p class="offer-price">Assinatura recorrente ou pacote avulso</p>
         </div>
-        <p>Exclusivo para m&eacute;dicos com CRM v&aacute;lido. Pagamento por emiss&atilde;o de documento.</p>
+        <p>Exclusivo para m&eacute;dicos com CRM v&aacute;lido. Escolha entre assinatura mensal com 30 laudos ou pacotes avulsos conforme sua demanda.</p>
         <ul class="offer-list">
-          <li>Pacote com 10 documentos</li>
-          <li>Pacote com 25 documentos</li>
-          <li>Pacote com 50 documentos</li>
+          <li>Assinatura recorrente com 30 laudos mensais</li>
+          <li>Pacote avulso com 10 documentos</li>
+          <li>Pacote avulso com 25 documentos</li>
+          <li>Pacote avulso com 50 documentos</li>
           <li>Valida&ccedil;&atilde;o obrigat&oacute;ria de CRM</li>
         </ul>
-        <button class="primary-button plan-action-button" type="button" id="doctorPlanButton">Sou m&eacute;dico &mdash; adquirir cr&eacute;ditos</button>
+        <button class="primary-button plan-action-button" type="button" id="doctorPlanButton">Sou m&eacute;dico &mdash; contratar plano</button>
       </article>
       <article class="offer-card">
         <div class="offer-card-head">
@@ -16397,15 +16532,25 @@ const startPcdDigital = () => {
     setText("#heroPlansButton", "Conhecer planos");
     setText("#heroLoginButton", "Entrar");
     setText("#companyPlanButton", "Contratar plano");
-    setText("#doctorPlanButton", "Sou médico — adquirir créditos");
+    setText("#doctorPlanButton", "Sou médico — contratar plano");
     setText("#demoPlanButton", "Testar demonstração");
-    setText("#showRegisterButton", "Ver planos");
+    setText("#showRegisterButton", "Ver planos e contratar");
     setText("#showLoginFromRegisterButton", "Voltar para login");
     setText("#accessBuyerButton strong", "Entrar com conta contratada");
-    setText("#accessBuyerButton span", "Empresas acessam o dashboard administrativo e medicos autenticados acessam a area tecnica conforme o perfil.");
+    setText("#accessBuyerButton span", "Empresas acessam o dashboard administrativo e médicos autenticados acessam a área técnica conforme o perfil.");
     setText("#accessAdminButton strong", "Entrar como administrador");
     setText("#accessAdminButton span", "Painel interno para clientes, pagamentos, renovações, acessos e configurações da plataforma.");
     setText("#authPanelClose", "×");
+    setText("#submitAssessment", "Classificar caso");
+    setText("#resetModule", "Limpar módulo");
+    setText("#resultTitle", "Selecione um módulo e preencha os dados clínicos");
+    setText("#resultMessage", "O sistema só gera descrição técnica e limitações funcionais quando o caso enquadra conforme a lógica clínico-funcional definida.");
+    setText("#descriptionBlock h4", "Descrição clínico-funcional e CID");
+    setText("#limitationsBlock h4", "Limitações funcionais e impacto laboral");
+    setText("#reportBlock h4", "Sugestão de laudo técnico");
+    setText("#pdfBlock h4", "Emissão do laudo e anexos");
+    setText("#pdfBlock p", "Quando o caso enquadrar, você poderá abrir o pacote de impressão com anexos vinculados ou salvar o PDF final do laudo para arquivo e envio.");
+    setText("#supportBlock h4", "Observações técnicas e documentação complementar");
 
     setHtml(".legal-highlight-icon", "&#9888;");
 

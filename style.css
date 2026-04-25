@@ -4000,3 +4000,227 @@ body.company-mode .app-shell{
     flex-direction:column;
   }
 }
+
+/* Visual polish: capa corporativa e padrao inicial */
+body{
+  font-family:"Inter", "Segoe UI", "Aptos", "Trebuchet MS", sans-serif;
+  background:
+    radial-gradient(circle at 12% 12%, rgba(10, 91, 134, 0.18), transparent 24%),
+    radial-gradient(circle at 86% 10%, rgba(111, 131, 148, 0.20), transparent 20%),
+    linear-gradient(135deg, #edf3f7 0%, #d8e2ea 48%, #c9d5de 100%);
+}
+
+.auth-shell{
+  max-width:1380px;
+  padding:30px 26px 48px;
+  gap:26px;
+}
+
+.auth-brand{
+  align-items:center;
+  padding:18px 20px;
+  border:1px solid rgba(17, 70, 103, 0.10);
+  border-radius:24px;
+  background:rgba(246, 249, 252, 0.78);
+  backdrop-filter:blur(14px);
+  box-shadow:0 18px 44px rgba(12, 31, 46, 0.10);
+}
+
+.auth-brand-lockup{
+  align-items:center;
+  gap:18px;
+}
+
+.auth-brand-title{
+  font-weight:700;
+  letter-spacing:-0.03em;
+}
+
+.auth-brand-subtitle{
+  max-width:60ch;
+  color:#4f6475;
+  font-weight:400;
+  line-height:1.6;
+}
+
+.sales-hero{
+  grid-template-columns:minmax(0, 1.14fr) minmax(340px, 0.86fr);
+  align-items:stretch;
+  gap:24px;
+}
+
+.sales-hero-copy{
+  position:relative;
+  overflow:hidden;
+  padding:clamp(32px, 4vw, 52px);
+  border-radius:30px;
+  background:linear-gradient(145deg, rgba(11, 30, 45, 0.96), rgba(13, 70, 103, 0.94));
+  box-shadow:0 30px 58px rgba(9, 25, 38, 0.22);
+  color:#f5fbff;
+}
+
+.sales-hero-copy::before{
+  content:"";
+  position:absolute;
+  inset:-30% auto auto -8%;
+  width:320px;
+  height:320px;
+  border-radius:50%;
+  background:radial-gradient(circle, rgba(124, 194, 229, 0.18), transparent 68%);
+  pointer-events:none;
+}
+
+.sales-brand-chip{
+  display:inline-flex;
+  align-items:center;
+  padding:8px 14px;
+  border-radius:999px;
+  background:rgba(255, 255, 255, 0.10);
+  color:#dceef8;
+  font-weight:700;
+  letter-spacing:0.06em;
+  text-transform:uppercase;
+}
+
+.sales-hero-copy h3{
+  margin:18px 0 14px;
+  max-width:12ch;
+  font-size:clamp(2.3rem, 4vw, 3.7rem);
+  line-height:1.04;
+  letter-spacing:-0.05em;
+  font-weight:700;
+  color:#ffffff;
+}
+
+.sales-hero-copy p{
+  max-width:58ch;
+  font-size:1.06rem;
+  line-height:1.72;
+  color:rgba(237, 247, 252, 0.88);
+  font-weight:400;
+}
+
+.sales-hero-actions{
+  margin-top:12px;
+}
+
+.sales-hero-panel{
+  display:flex;
+  min-height:100%;
+}
+
+.hero-insight-visual{
+  width:100%;
+  min-height:100%;
+  padding:30px;
+  border-radius:28px;
+  border:1px solid rgba(17, 70, 103, 0.12);
+  background:
+    radial-gradient(circle at top right, rgba(10, 91, 134, 0.14), transparent 26%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(236, 243, 248, 0.96));
+  box-shadow:0 24px 48px rgba(15, 40, 58, 0.10);
+  transition:opacity 0.22s ease, transform 0.22s ease, filter 0.22s ease, box-shadow 0.22s ease;
+}
+
+.hero-insight-visual.is-transitioning{
+  opacity:0.36;
+  transform:translateY(8px);
+  filter:blur(1px);
+}
+
+.hero-insight-title{
+  display:block;
+  margin-top:14px;
+  font-size:1.34rem;
+  line-height:1.22;
+  letter-spacing:-0.02em;
+  color:#173247;
+  font-weight:700;
+}
+
+.hero-insight-text{
+  margin-top:12px;
+  color:#556a7a;
+  line-height:1.72;
+}
+
+.primary-button,
+.ghost-button{
+  border-radius:12px;
+  padding:14px 22px;
+  font-weight:700;
+  transition:transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease, background 0.22s ease, color 0.22s ease;
+}
+
+.primary-button{
+  background:linear-gradient(135deg, #0e6a99, #0a567d);
+  color:#f9fcff;
+  box-shadow:0 14px 26px rgba(10, 86, 125, 0.24);
+}
+
+.primary-button:hover,
+.primary-button:focus-visible{
+  transform:translateY(-2px);
+  box-shadow:0 18px 30px rgba(10, 86, 125, 0.28);
+}
+
+.ghost-button{
+  border:1px solid rgba(17, 70, 103, 0.14);
+  background:rgba(255, 255, 255, 0.88);
+  color:#173247;
+  box-shadow:0 10px 18px rgba(18, 45, 64, 0.08);
+}
+
+.ghost-button:hover,
+.ghost-button:focus-visible{
+  transform:translateY(-2px);
+  border-color:rgba(10, 91, 134, 0.22);
+  background:#ffffff;
+}
+
+.sales-primary-button{
+  min-width:220px;
+}
+
+.support-detail-card,
+.offer-card,
+.professional-contact-card{
+  border-color:rgba(17, 70, 103, 0.10);
+  box-shadow:0 18px 36px rgba(17, 44, 62, 0.08);
+}
+
+.support-detail-card,
+.offer-card{
+  background:rgba(255, 255, 255, 0.90);
+}
+
+.offer-card.featured{
+  background:
+    radial-gradient(circle at top right, rgba(10, 91, 134, 0.11), transparent 24%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(241, 247, 251, 0.98));
+}
+
+.offer-card:hover,
+.support-detail-card:hover{
+  transform:translateY(-3px);
+}
+
+.pricing-preview-head h3,
+.support-explainer-head h3,
+.professional-contact-body h3{
+  letter-spacing:-0.02em;
+}
+
+@media (max-width:980px){
+  .auth-shell{
+    padding:24px 18px 34px;
+  }
+
+  .sales-hero{
+    grid-template-columns:1fr;
+  }
+
+  .sales-hero-copy h3{
+    max-width:none;
+  }
+}
