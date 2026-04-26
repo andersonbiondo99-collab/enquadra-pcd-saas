@@ -4322,6 +4322,203 @@ body{
   margin-top:12px;
 }
 
+.status-note{
+  min-height:22px;
+  margin:0;
+  padding:0;
+  color:#5e7282;
+  line-height:1.6;
+  transition:background 0.22s ease, border-color 0.22s ease, color 0.22s ease, padding 0.22s ease, min-height 0.22s ease;
+}
+
+.status-note[data-tone]{
+  min-height:auto;
+  padding:14px 16px;
+  border-radius:18px;
+  border:1px solid rgba(17, 70, 103, 0.10);
+  background:rgba(244, 248, 251, 0.92);
+  color:#21465e;
+}
+
+.status-note[data-tone="success"]{
+  border-color:rgba(24, 132, 96, 0.18);
+  background:rgba(232, 247, 241, 0.96);
+  color:#0f6a4c;
+}
+
+.status-note[data-tone="warning"]{
+  border-color:rgba(180, 120, 14, 0.18);
+  background:rgba(255, 247, 227, 0.96);
+  color:#8a5a08;
+}
+
+.status-note[data-tone="error"]{
+  border-color:rgba(184, 55, 55, 0.18);
+  background:rgba(252, 239, 239, 0.96);
+  color:#9a2525;
+}
+
+.status-note[data-tone="info"]{
+  border-color:rgba(17, 70, 103, 0.12);
+  background:rgba(239, 246, 250, 0.96);
+  color:#22485f;
+}
+
+.sales-hero{
+  grid-template-columns:minmax(0, 0.86fr) minmax(420px, 1.14fr);
+  gap:30px;
+}
+
+.sales-hero-copy{
+  padding:clamp(28px, 3vw, 42px);
+}
+
+.sales-hero-copy h3{
+  max-width:11.4ch;
+  font-size:clamp(1.8rem, 2.75vw, 2.68rem);
+  line-height:1.03;
+}
+
+.sales-hero-copy p{
+  max-width:46ch;
+}
+
+.hero-insight-visual{
+  padding:38px 38px 32px;
+}
+
+.hero-insight-title{
+  max-width:17ch;
+  font-size:1.52rem;
+}
+
+.hero-insight-text{
+  max-width:38ch;
+  line-height:1.82;
+}
+
+.payment-assurance{
+  display:grid;
+  gap:22px;
+  padding:28px;
+  border:1px solid rgba(17, 70, 103, 0.10);
+  border-radius:28px;
+  background:
+    radial-gradient(circle at top right, rgba(10, 91, 134, 0.08), transparent 24%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(240, 246, 250, 0.95));
+  box-shadow:0 20px 40px rgba(16, 45, 63, 0.08);
+}
+
+.payment-assurance-head{
+  display:grid;
+  gap:10px;
+}
+
+.payment-assurance-head h3{
+  margin:0;
+  font-size:clamp(1.5rem, 2.2vw, 2rem);
+  letter-spacing:-0.03em;
+  color:#173247;
+}
+
+.payment-assurance-head p{
+  margin:0;
+  max-width:72ch;
+  color:#5a6f7f;
+  line-height:1.7;
+}
+
+.payment-assurance-grid{
+  display:grid;
+  grid-template-columns:repeat(3, minmax(0, 1fr));
+  gap:16px;
+}
+
+.payment-assurance-card{
+  display:grid;
+  gap:10px;
+  padding:20px;
+  border-radius:22px;
+  border:1px solid rgba(17, 70, 103, 0.10);
+  background:rgba(255, 255, 255, 0.88);
+}
+
+.payment-assurance-card strong{
+  color:#173247;
+  font-size:1rem;
+}
+
+.payment-assurance-card p{
+  margin:0;
+  color:#5d7181;
+  line-height:1.65;
+}
+
+.payment-assurance-strip,
+.selected-plan-brief-meta{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+}
+
+.payment-assurance-chip,
+.selected-plan-chip{
+  display:inline-flex;
+  align-items:center;
+  padding:9px 12px;
+  border-radius:999px;
+  border:1px solid rgba(17, 70, 103, 0.10);
+  background:rgba(247, 251, 253, 0.96);
+  color:#21465e;
+  font-size:0.86rem;
+  font-weight:700;
+  line-height:1.4;
+}
+
+.selected-plan-brief{
+  display:grid;
+  gap:14px;
+  margin-top:8px;
+  padding:18px 20px;
+  border-radius:22px;
+  border:1px solid rgba(17, 70, 103, 0.10);
+  background:
+    radial-gradient(circle at top right, rgba(10, 91, 134, 0.08), transparent 28%),
+    linear-gradient(180deg, rgba(249, 252, 254, 0.98), rgba(239, 246, 250, 0.96));
+}
+
+.selected-plan-brief-head{
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:space-between;
+  gap:12px;
+  align-items:flex-start;
+}
+
+.selected-plan-brief-head strong{
+  color:#173247;
+  font-size:1rem;
+}
+
+.selected-plan-brief p{
+  margin:0;
+  color:#5b7080;
+  line-height:1.66;
+}
+
+.dashboard-card.success{
+  background:linear-gradient(180deg, #ecf8f3, #ddf1e8);
+}
+
+.dashboard-card.portfolio{
+  background:linear-gradient(180deg, #eef5fb, #ddeaf4);
+}
+
+.dashboard-card.success strong,
+.dashboard-card.portfolio strong{
+  color:#173247;
+}
+
 @media (max-width:980px){
   .auth-shell{
     padding:24px 18px 34px;
@@ -4337,7 +4534,19 @@ body{
   }
 
   .hero-insight-visual{
-    padding:26px;
+    padding:28px 24px;
+  }
+
+  .payment-assurance{
+    padding:24px 20px;
+  }
+
+  .payment-assurance-grid{
+    grid-template-columns:1fr;
+  }
+
+  .selected-plan-brief-head{
+    flex-direction:column;
   }
 
   .payment-history-head{

@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20260425b">
+  <link rel="stylesheet" href="style.css?v=20260426a">
 </head>
 <body>
   <div class="auth-shell" id="authShell">
@@ -136,6 +136,33 @@
           </div>
 
           <div class="plan-grid public-plan-grid" id="publicPlanGrid"></div>
+        </section>
+
+        <section class="payment-assurance" id="paymentAssurance">
+          <div class="payment-assurance-head">
+            <span class="section-step">Pagamento e ativa&ccedil;&atilde;o</span>
+            <h3>Compra assistida, cobran&ccedil;a segura e libera&ccedil;&atilde;o rastre&aacute;vel</h3>
+            <p>O ambiente comercial foi estruturado para reduzir ru&iacute;do na contrata&ccedil;&atilde;o e dar previsibilidade ao cliente desde a escolha do plano at&eacute; a renova&ccedil;&atilde;o.</p>
+          </div>
+          <div class="payment-assurance-grid">
+            <article class="payment-assurance-card">
+              <strong>1. Escolha do plano</strong>
+              <p>Valor, franquia, vig&ecirc;ncia e modelo de cobran&ccedil;a ficam vis&iacute;veis antes do cadastro para evitar d&uacute;vida comercial.</p>
+            </article>
+            <article class="payment-assurance-card">
+              <strong>2. Checkout Mercado Pago</strong>
+              <p>Pagamento avulso ou assinatura recorrente, com retorno de status e prepara&ccedil;&atilde;o para confirma&ccedil;&atilde;o autom&aacute;tica por webhook.</p>
+            </article>
+            <article class="payment-assurance-card">
+              <strong>3. Libera&ccedil;&atilde;o operacional</strong>
+              <p>O acesso acompanha o status comercial e, no plano m&eacute;dico, a emiss&atilde;o continua respeitando a valida&ccedil;&atilde;o administrativa do CRM.</p>
+            </article>
+          </div>
+          <div class="payment-assurance-strip">
+            <span class="payment-assurance-chip">Dom&iacute;nio oficial com HTTPS</span>
+            <span class="payment-assurance-chip">Hist&oacute;rico comercial no painel admin</span>
+            <span class="payment-assurance-chip">Renova&ccedil;&atilde;o acompanhada por ciclo</span>
+          </div>
         </section>
 
         <section class="feature-comparison">
@@ -338,6 +365,17 @@
         </label>
 
         <div class="plan-grid" id="registerPlanGrid"></div>
+
+        <section class="selected-plan-brief" id="selectedPlanBrief" aria-live="polite">
+          <div class="selected-plan-brief-head">
+            <strong id="selectedPlanBriefTitle">Resumo da contrata&ccedil;&atilde;o</strong>
+            <span class="section-chip" id="selectedPlanBriefBilling">Checkout Mercado Pago</span>
+          </div>
+          <p id="selectedPlanBriefDescription">Selecione um plano para visualizar cobran&ccedil;a, franquia, ciclo e regra de libera&ccedil;&atilde;o.</p>
+          <div class="selected-plan-brief-meta" id="selectedPlanBriefMeta">
+            <span class="selected-plan-chip">Libera&ccedil;&atilde;o condicionada ao pagamento aprovado</span>
+          </div>
+        </section>
 
         <label class="checkbox-card hidden" id="doctorResponsibilityCard">
           <input type="checkbox" id="registerDoctorTerms">
@@ -2092,6 +2130,6 @@
     </main>
   </div>
 
-  <script src="app.js?v=20260425b" defer></script>
+  <script src="app.js?v=20260426a" defer></script>
 </body>
 </html>

@@ -294,6 +294,11 @@ const startPcdDigital = () => {
     registerDoctorBirthDate: $("#registerDoctorBirthDate"),
     registerUsernameSuggestions: $("#registerUsernameSuggestions"),
     registerSubmitButton: $("#registerSubmitButton"),
+    selectedPlanBrief: $("#selectedPlanBrief"),
+    selectedPlanBriefTitle: $("#selectedPlanBriefTitle"),
+    selectedPlanBriefDescription: $("#selectedPlanBriefDescription"),
+    selectedPlanBriefBilling: $("#selectedPlanBriefBilling"),
+    selectedPlanBriefMeta: $("#selectedPlanBriefMeta"),
     setupForm: $("#setupForm"),
     setupCompany: $("#setupCompany"),
     setupUsername: $("#setupUsername"),
@@ -4258,11 +4263,11 @@ const startPcdDigital = () => {
       setAuthMode("login");
 
       if (checkoutStatus === "success") {
-        setAuthStatus("Retorno de pagamento recebido. Se o webhook ja confirmou o pagamento, o acesso da empresa sera liberado automaticamente.");
+        setAuthStatus("Retorno de pagamento recebido. Assim que o webhook confirmar a aprovacao, o acesso contratado sera liberado automaticamente.");
       } else if (checkoutStatus === "pending") {
-        setAuthStatus("Pagamento em processamento. Aguarde a confirmacao do Mercado Pago para liberar o acesso.");
+        setAuthStatus("Pagamento em processamento. Aguarde a confirmacao do Mercado Pago antes de tentar acessar a area contratada.");
       } else if (checkoutStatus === "failure") {
-        setAuthStatus("Pagamento nao concluido. Gere um novo checkout ou tente novamente.");
+        setAuthStatus("Pagamento nao concluido. Gere um novo checkout pelo cadastro ou solicite apoio comercial para retomar a contratacao.");
       }
     } catch (error) {
       console.error(error);
@@ -8313,7 +8318,67 @@ const startPcdDigital = () => {
   }
 
   function setAuthStatus(message = "") {
-    if (refs.authStatus) refs.authStatus.textContent = message;
+    if (!refs.authStatus) {
+      return;
+    }
+    const normalized = String(message || "").trim();
+    refs.authStatus.textContent = normalized;
+    if (!normalized) {
+      delete refs.authStatus.dataset.tone;
+      return;
+    }
+    const tone = inferStatusTone(normalized);
+    if (tone) {
+      refs.authStatus.dataset.tone = tone;
+    } else {
+      delete refs.authStatus.dataset.tone;
+    }
+  }
+
+  function inferStatusTone(message = "") {
+    const normalized = String(message || "").trim().toLowerCase();
+    if (!normalized) {
+      return "";
+    }
+    if (
+      normalized.includes("nao foi possivel")
+      || normalized.includes("não foi possível")
+      || normalized.includes("inval")
+      || normalized.includes("invál")
+      || normalized.includes("bloquead")
+      || normalized.includes("falh")
+      || normalized.includes("recusad")
+      || normalized.includes("cancelad")
+      || normalized.includes("vencid")
+      || normalized.includes("erro")
+    ) {
+      return "error";
+    }
+    if (
+      normalized.includes("pendente")
+      || normalized.includes("processamento")
+      || normalized.includes("aguarde")
+      || normalized.includes("analise")
+      || normalized.includes("análise")
+      || normalized.includes("checkout")
+      || normalized.includes("mercado pago")
+    ) {
+      return "warning";
+    }
+    if (
+      normalized.includes("sucesso")
+      || normalized.includes("liberad")
+      || normalized.includes("aprovad")
+      || normalized.includes("aberto em nova guia")
+      || normalized.includes("criada")
+      || normalized.includes("criado")
+      || normalized.includes("configurad")
+      || normalized.includes("encerrada")
+      || normalized.includes("encerrado")
+    ) {
+      return "success";
+    }
+    return "info";
   }
 
   function updateAuthEntryCopy() {
@@ -14915,6 +14980,10 @@ const startPcdDigital = () => {
 
     const expiringCard = ensureDashboardMetricCard("dashboardExpiringSoonCard", "Vencendo em breve", "renewal");
     const contactCard = ensureDashboardMetricCard("dashboardRenewalContactCard", "Contato pendente", "contact");
+    const pendingCard = ensureDashboardMetricCard("dashboardPendingPaymentsCard", "Pagamentos pendentes", "warning");
+    const approvedCard = ensureDashboardMetricCard("dashboardApprovedPaymentsCard", "Pagamentos aprovados", "success");
+    const doctorPortfolioCard = ensureDashboardMetricCard("dashboardDoctorPortfolioCard", "Planos medicos", "portfolio");
+    const companyPortfolioCard = ensureDashboardMetricCard("dashboardCompanyPortfolioCard", "Planos empresariais", "portfolio");
     if (expiringCard) {
       const strong = expiringCard.querySelector("strong");
       if (strong) strong.textContent = String(Number(safeSummary.expiringSoonClients || 0));
@@ -14922,6 +14991,22 @@ const startPcdDigital = () => {
     if (contactCard) {
       const strong = contactCard.querySelector("strong");
       if (strong) strong.textContent = String(Number(safeSummary.renewalContactPendingClients || 0));
+    }
+    if (pendingCard) {
+      const strong = pendingCard.querySelector("strong");
+      if (strong) strong.textContent = String(Number(safeSummary.pendingPayments || 0));
+    }
+    if (approvedCard) {
+      const strong = approvedCard.querySelector("strong");
+      if (strong) strong.textContent = String(Number(safeSummary.approvedPayments || 0));
+    }
+    if (doctorPortfolioCard) {
+      const strong = doctorPortfolioCard.querySelector("strong");
+      if (strong) strong.textContent = String(Number(safeSummary.individualPlanCount || 0));
+    }
+    if (companyPortfolioCard) {
+      const strong = companyPortfolioCard.querySelector("strong");
+      if (strong) strong.textContent = String(Number(safeSummary.businessPlanCount || 0));
     }
   }
 
@@ -14932,6 +15017,8 @@ const startPcdDigital = () => {
       totalClients: clients.length,
       activeClients: clients.filter((item) => item.status === "active" && normalizeLocalPaymentStatus(item.paymentStatus) === "approved").length,
       delinquentClients: clients.filter((item) => item.status === "inadimplente" || ["pending", "expired", "rejected", "cancelled"].includes(normalizeLocalPaymentStatus(item.paymentStatus))).length,
+      pendingPayments: clients.filter((item) => normalizeLocalPaymentStatus(item.paymentStatus) === "pending").length,
+      approvedPayments: clients.filter((item) => normalizeLocalPaymentStatus(item.paymentStatus) === "approved").length,
       totalReports: clients.reduce((sum, item) => sum + Number(item.usageCount || 0), 0),
       expiringSoonClients: clients.filter((item) => {
         const snapshot = getRenewalSnapshot(item);
@@ -14940,7 +15027,9 @@ const startPcdDigital = () => {
       renewalContactPendingClients: clients.filter((item) => {
         const snapshot = getRenewalSnapshot(item);
         return snapshot.needsContact && !item.renewalContactedAt;
-      }).length
+      }).length,
+      individualPlanCount: clients.filter((item) => String(item.planId || "").startsWith("individual_")).length,
+      businessPlanCount: clients.filter((item) => String(item.planId || "").startsWith("empresarial_")).length
     };
   }
 
@@ -16997,14 +17086,62 @@ const startPcdDigital = () => {
 
   function getPlanCheckoutSummary(plan = {}) {
     return normalizeClientPlanBillingModel(plan.billingModel) === "subscription"
-      ? "Assinatura recorrente via Mercado Pago"
-      : "Checkout avulso via Mercado Pago";
+      ? "Assinatura mensal via Mercado Pago"
+      : "Pagamento unico via Mercado Pago";
+  }
+
+  function getPlanActivationSummary(plan = {}, journey = "company") {
+    const isDoctorJourney = journey === "doctor";
+    if (normalizeClientPlanBillingModel(plan.billingModel) === "subscription") {
+      return isDoctorJourney
+        ? "Emissao liberada apos pagamento aprovado e validacao administrativa do CRM."
+        : "Acesso liberado apos a confirmacao da primeira cobranca recorrente.";
+    }
+    return isDoctorJourney
+      ? "Liberacao comercial apos pagamento aprovado, com emissao condicionada a validacao do CRM."
+      : "Acesso liberado apos a aprovacao do checkout comercial.";
+  }
+
+  function renderSelectedPlanBrief(plan, journey = "company") {
+    if (!refs.selectedPlanBrief || !refs.selectedPlanBriefTitle || !refs.selectedPlanBriefDescription || !refs.selectedPlanBriefBilling || !refs.selectedPlanBriefMeta) {
+      return;
+    }
+
+    if (!plan) {
+      refs.selectedPlanBriefTitle.textContent = "Resumo da contratacao";
+      refs.selectedPlanBriefDescription.textContent = "Selecione um plano para visualizar cobranca, franquia, ciclo e regra de liberacao.";
+      refs.selectedPlanBriefBilling.textContent = "Checkout Mercado Pago";
+      refs.selectedPlanBriefMeta.innerHTML = '<span class="selected-plan-chip">Liberacao condicionada ao pagamento aprovado</span>';
+      return;
+    }
+
+    const isDoctorJourney = journey === "doctor";
+    const priceLabel = formatCurrencyCents(Number(plan.priceCents || 0));
+    const description = isDoctorJourney
+      ? "Cadastro profissional com cobranca integrada, franquia vinculada ao medico autenticado e controle de emissao por status comercial."
+      : "Contratacao empresarial com dashboard administrativo, cobranca integrada e visibilidade sobre vigencia, uso e renovacao.";
+    const meta = [
+      getPlanQuotaSummary(plan),
+      getPlanCycleSummary(plan),
+      getPlanActivationSummary(plan, journey),
+      normalizeClientPlanBillingModel(plan.billingModel) === "subscription"
+        ? "Renovacao comercial acompanhada por ciclo mensal."
+        : "Retorno do checkout tratado antes da liberacao operacional."
+    ];
+
+    refs.selectedPlanBriefTitle.textContent = `${fixBrokenText(plan.label || "Plano selecionado")} - ${priceLabel}`;
+    refs.selectedPlanBriefDescription.textContent = description;
+    refs.selectedPlanBriefBilling.textContent = getPlanCheckoutSummary(plan);
+    refs.selectedPlanBriefMeta.innerHTML = meta
+      .filter(Boolean)
+      .map((item) => `<span class="selected-plan-chip">${escapeHtml(item)}</span>`)
+      .join("");
   }
 
   function buildPlanRegisterOptionLabel(plan = {}) {
     const priceLabel = formatCurrencyCents(Number(plan.priceCents || 0));
     const quotaLabel = getPlanQuotaSummary(plan);
-    return `${fixBrokenText(plan.label || "")} • ${quotaLabel} • ${priceLabel}`;
+    return `${fixBrokenText(plan.label || "")} | ${quotaLabel} | ${priceLabel}`;
   }
 
   function isFeaturedPlan(plan = {}) {
@@ -17682,6 +17819,8 @@ const startPcdDigital = () => {
         refs.registerPlan.value = chosenPlan.id;
       }
     }
+
+    renderSelectedPlanBrief(chosenPlan, journey);
 
     if (registerSubmitButton) {
       const billingModel = chosenPlan ? normalizeClientPlanBillingModel(chosenPlan.billingModel) : "one_time";
@@ -18807,6 +18946,8 @@ const startPcdDigital = () => {
         refs.registerPlan.value = chosenPlan.id;
       }
     }
+
+    renderSelectedPlanBrief(chosenPlan, journey);
 
     if (registerSubmitButton) {
       const billingModel = chosenPlan ? normalizeClientPlanBillingModel(chosenPlan.billingModel) : "one_time";

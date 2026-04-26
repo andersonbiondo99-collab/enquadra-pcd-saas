@@ -41,6 +41,22 @@ Crie no Render:
 - `MP_ACCESS_TOKEN=...`
 - `MP_WEBHOOK_SECRET=...`
 
+## Valores para o dominio oficial atual
+
+Quando `enquadrapcddigital.com.br` estiver apontando corretamente para o Render, use:
+
+- `APP_BASE_URL=https://enquadrapcddigital.com.br`
+- `ALLOWED_ORIGINS=https://enquadrapcddigital.com.br,https://enquadra-pcd-saas.onrender.com`
+
+No Mercado Pago, o webhook deve ficar em:
+
+- `https://enquadrapcddigital.com.br/api/webhooks/mercadopago`
+
+No DNS do dominio:
+
+- registro `A` para `@` apontando para `216.24.57.1`
+- registro `CNAME` para `www` apontando para `enquadra-pcd-saas.onrender.com`
+
 O `render.yaml` ja foi preparado para usar:
 
 - `DATA_DIR=/opt/render/project/src/persisted-data`
