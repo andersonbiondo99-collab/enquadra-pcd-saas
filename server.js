@@ -149,6 +149,7 @@ const STATIC_IMAGE_ALIASES = {
   "/logo.png": ["logo.png", "img/logo.png"],
   "/foto.png": ["foto.png", "img/foto.png"]
 };
+const MAX_PAYMENT_HISTORY_ITEMS = 40;
 
 const sessions = new Map();
 
@@ -255,7 +256,7 @@ const server = http.createServer(async (req, res) => {
       let checkout = null;
       if (MP_ACCESS_TOKEN) {
         checkout = await createBillingCheckout({ user: newUser, plan, req });
-        updateUserRecord(newUser.id, (current) => ({
+        updateUserRecord(newUser.id, (current) => appendPaymentHistory({
           ...current,
           mpPreferenceId: checkout.preferenceId || "",
           mpCheckoutUrl: checkout.checkoutUrl,
@@ -263,6 +264,19 @@ const server = http.createServer(async (req, res) => {
           mpSubscriptionStatus: checkout.subscriptionStatus || "",
           paymentProvider: "mercadopago",
           updatedAt: new Date().toISOString()
+        }, {
+          title: normalizePlanBillingModel(plan.billingModel) === "subscription"
+            ? "Assinatura preparada no Mercado Pago"
+            : "Checkout comercial gerado",
+          details: normalizePlanBillingModel(plan.billingModel) === "subscription"
+            ? `A assinatura do plano ${plan.label} foi iniciada para liberacao automatica apos confirmacao.`
+            : `O checkout do plano ${plan.label} foi gerado para concluir a liberacao comercial da conta.`,
+          status: "pending",
+          provider: "mercadopago",
+          source: "signup",
+          referenceId: checkout.subscriptionId || checkout.preferenceId || "",
+          amountCents: Number(plan.priceCents || 0),
+          dedupKey: `checkout:${newUser.id}:${checkout.subscriptionId || checkout.preferenceId || `${plan.id}:signup`}`
         }));
       }
 
@@ -669,7 +683,7 @@ const server = http.createServer(async (req, res) => {
       }
 
       const checkout = await createBillingCheckout({ user, plan, req, purpose: "renewal" });
-      const updated = updateUserRecord(user.id, (current) => ({
+      const updated = updateUserRecord(user.id, (current) => appendPaymentHistory({
         ...current,
         mpPreferenceId: checkout.preferenceId || "",
         mpCheckoutUrl: checkout.checkoutUrl,
@@ -679,6 +693,19 @@ const server = http.createServer(async (req, res) => {
         renewalOfferedAt: new Date().toISOString(),
         lastPaymentAttemptAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
+      }, {
+        title: normalizePlanBillingModel(plan.billingModel) === "subscription"
+          ? "Assinatura de renovacao preparada"
+          : "Link de renovacao gerado",
+        details: normalizePlanBillingModel(plan.billingModel) === "subscription"
+          ? `A renovacao recorrente do plano ${plan.label} foi enviada ao Mercado Pago.`
+          : `Um novo checkout foi aberto para renovar o plano ${plan.label}.`,
+        status: "pending",
+        provider: "mercadopago",
+        source: "renewal",
+        referenceId: checkout.subscriptionId || checkout.preferenceId || "",
+        amountCents: Number(plan.priceCents || 0),
+        dedupKey: `renewal:${user.id}:${checkout.subscriptionId || checkout.preferenceId || `${plan.id}:renewal`}`
       }));
 
       return sendJson(res, 200, { checkout, user: serializeUser(updated) });
@@ -853,7 +880,8 @@ const server = http.createServer(async (req, res) => {
         return sendJson(res, 400, { message: validationError });
       }
 
-      const updated = {
+      const now = new Date().toISOString();
+      let updated = {
         ...current,
         company: body.company !== undefined ? normalizeText(body.company) : current.company,
         username: nextUsername,
@@ -879,14 +907,23 @@ const server = http.createServer(async (req, res) => {
           ? false
           : (body.crmValidated !== undefined ? Boolean(body.crmValidated) : Boolean(current.crmValidated)),
         notes: body.notes !== undefined ? normalizeText(body.notes) : current.notes,
-        updatedAt: new Date().toISOString()
+        updatedAt: now
       };
 
       if (nextPlan.id !== current.planId) {
         updated.currentCycleUsageCount = 0;
         updated.currentCycleStartedAt = updated.paymentStatus === "approved"
-          ? new Date().toISOString()
+          ? now
           : (current.currentCycleStartedAt || null);
+      }
+
+      if (updated.role !== "admin" && updated.paymentStatus === "approved" && current.paymentStatus !== "approved") {
+        updated.paymentLastApprovedAt = now;
+        updated.currentCycleUsageCount = 0;
+        updated.currentCycleStartedAt = now;
+        if (!updated.paymentDueAt) {
+          updated.paymentDueAt = addMonths(now, Number(updated.billingCycleMonths || 1)).toISOString();
+        }
       }
 
       if (updated.role === "admin") {
@@ -902,6 +939,7 @@ const server = http.createServer(async (req, res) => {
         updated.planQuotaPeriod = "none";
         updated.currentCycleUsageCount = 0;
         updated.currentCycleStartedAt = null;
+        updated.paymentHistory = [];
       }
 
       if (body.password !== undefined && String(body.password || "")) {
@@ -911,6 +949,41 @@ const server = http.createServer(async (req, res) => {
         const credential = hashPassword(String(body.password));
         updated.passwordSalt = credential.salt;
         updated.passwordHash = credential.hash;
+      }
+
+      if (updated.role !== "admin") {
+        const paymentEntries = [];
+        if (current.planId !== updated.planId) {
+          paymentEntries.push({
+            title: "Plano ajustado manualmente",
+            details: `O plano foi alterado de ${current.planLabel || current.planId || "nao informado"} para ${updated.planLabel || updated.planId || "nao informado"}.`,
+            status: updated.paymentStatus,
+            provider: updated.paymentProvider || "manual",
+            source: "admin",
+            amountCents: Number(updated.planPriceCents || 0)
+          });
+        }
+        if (current.paymentStatus !== updated.paymentStatus) {
+          paymentEntries.push({
+            title: "Status de pagamento ajustado manualmente",
+            details: `O pagamento passou de ${current.paymentStatus || "nao informado"} para ${updated.paymentStatus || "nao informado"}.`,
+            status: updated.paymentStatus,
+            provider: updated.paymentProvider || "manual",
+            source: "admin"
+          });
+        }
+        if ((current.paymentDueAt || "") !== (updated.paymentDueAt || "")) {
+          paymentEntries.push({
+            title: "Vigencia comercial atualizada",
+            details: updated.paymentDueAt
+              ? `A data de vigencia foi definida para ${updated.paymentDueAt.slice(0, 10)}.`
+              : "A data de vigencia foi removida do cadastro.",
+            status: updated.paymentStatus,
+            provider: updated.paymentProvider || "manual",
+            source: "admin"
+          });
+        }
+        updated = paymentEntries.reduce((accumulator, entry) => appendPaymentHistory(accumulator, entry), updated);
       }
 
       users[index] = updated;
@@ -1063,7 +1136,7 @@ const server = http.createServer(async (req, res) => {
       }
 
       const checkout = await createBillingCheckout({ user, plan, req, purpose: "renewal" });
-      const updated = updateUserRecord(user.id, (current) => ({
+      const updated = updateUserRecord(user.id, (current) => appendPaymentHistory({
         ...current,
         mpPreferenceId: checkout.preferenceId || "",
         mpCheckoutUrl: checkout.checkoutUrl,
@@ -1074,6 +1147,19 @@ const server = http.createServer(async (req, res) => {
         renewalOfferedAt: new Date().toISOString(),
         lastPaymentAttemptAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
+      }, {
+        title: normalizePlanBillingModel(plan.billingModel) === "subscription"
+          ? "Assinatura de renovacao preparada"
+          : "Link de pagamento administrativo gerado",
+        details: normalizePlanBillingModel(plan.billingModel) === "subscription"
+          ? `O administrador preparou uma assinatura recorrente para o plano ${plan.label}.`
+          : `O administrador gerou um checkout comercial para reativar o plano ${plan.label}.`,
+        status: "pending",
+        provider: "mercadopago",
+        source: "admin",
+        referenceId: checkout.subscriptionId || checkout.preferenceId || "",
+        amountCents: Number(plan.priceCents || 0),
+        dedupKey: `admin-renewal:${user.id}:${checkout.subscriptionId || checkout.preferenceId || `${plan.id}:admin`}`
       }));
 
       return sendJson(res, 200, { checkout, user: serializeUser(updated) });
@@ -1108,10 +1194,11 @@ const server = http.createServer(async (req, res) => {
 
     if (pathname === "/api/webhooks/mercadopago" && req.method === "POST") {
       const body = await readJsonBody(req);
-      if (MP_WEBHOOK_SECRET) {
-        // Reservado para validacao futura de assinatura sem bloquear o fluxo atual.
+      const signatureValidation = validateMercadoPagoWebhookSignature(req, requestUrl, body);
+      if (!signatureValidation.valid) {
+        return sendJson(res, 401, { message: "Assinatura do webhook Mercado Pago invalida." });
       }
-      queueMercadoPagoWebhookProcessing(body).catch((error) => {
+      queueMercadoPagoWebhookProcessing(body, requestUrl).catch((error) => {
         console.error("Falha ao processar webhook Mercado Pago:", error);
       });
       return sendJson(res, 200, { ok: true });
@@ -1471,7 +1558,8 @@ function buildUserRecord({
   linkedCompanyDoctorId,
   linkedDoctors,
   activityLog,
-  documentHistory
+  documentHistory,
+  paymentHistory
 }) {
   const now = new Date().toISOString();
   const plan = getPlanById(planId || "mensal", { includeInactive: true });
@@ -1524,6 +1612,7 @@ function buildUserRecord({
     linkedDoctors: role === "buyer" && normalizeAccountType(accountType) === "company" ? normalizeCompanyDoctors(linkedDoctors) : [],
     activityLog: role === "buyer" && normalizeAccountType(accountType) === "company" ? normalizeCompanyActivityLog(activityLog) : [],
     documentHistory: role === "buyer" && normalizeAccountType(accountType) === "company" ? normalizeCompanyDocumentHistory(documentHistory, 0) : [],
+    paymentHistory: role === "admin" ? [] : normalizePaymentHistory(paymentHistory),
     renewalOfferedAt: null,
     renewalContactedAt: null,
     renewalContactChannel: "",
@@ -1718,6 +1807,15 @@ function applyLifecycleRules(users) {
     }
     if (next.mpSubscriptionStatus === undefined) {
       next.mpSubscriptionStatus = "";
+      changed = true;
+    }
+    if (!Array.isArray(next.paymentHistory)) {
+      next.paymentHistory = [];
+      changed = true;
+    }
+    const normalizedPaymentHistory = normalizePaymentHistory(next.paymentHistory);
+    if (JSON.stringify(normalizedPaymentHistory) !== JSON.stringify(next.paymentHistory)) {
+      next.paymentHistory = normalizedPaymentHistory;
       changed = true;
     }
 
@@ -2012,6 +2110,58 @@ function normalizeCompanyDocumentHistory(list, fallbackUsageCount = 0) {
   return normalized
     .sort((left, right) => String(left.date).localeCompare(String(right.date)))
     .slice(-180);
+}
+
+function normalizePaymentHistoryEntry(entry = {}) {
+  const occurredAt = normalizeDateTime(entry.occurredAt);
+  const amountCandidate = entry.amountCents;
+  return {
+    id: normalizeText(entry.id) || crypto.randomUUID(),
+    title: normalizeText(entry.title) || "Atualizacao comercial",
+    details: normalizeText(entry.details),
+    status: normalizeText(entry.status).toLowerCase() || "info",
+    provider: normalizeText(entry.provider) || "manual",
+    source: normalizeText(entry.source) || "system",
+    referenceId: normalizeText(entry.referenceId),
+    amountCents: Number.isFinite(Number(amountCandidate)) ? Math.max(0, Math.round(Number(amountCandidate))) : null,
+    occurredAt,
+    dedupKey: normalizeText(entry.dedupKey)
+  };
+}
+
+function normalizePaymentHistory(list) {
+  if (!Array.isArray(list)) {
+    return [];
+  }
+
+  const unique = [];
+  const seenDedupKeys = new Set();
+  list.forEach((entry) => {
+    const normalized = normalizePaymentHistoryEntry(entry);
+    if (normalized.dedupKey) {
+      if (seenDedupKeys.has(normalized.dedupKey)) {
+        return;
+      }
+      seenDedupKeys.add(normalized.dedupKey);
+    }
+    unique.push(normalized);
+  });
+
+  return unique
+    .sort((left, right) => String(right.occurredAt).localeCompare(String(left.occurredAt)))
+    .slice(0, MAX_PAYMENT_HISTORY_ITEMS);
+}
+
+function appendPaymentHistory(user, entry) {
+  const normalizedEntry = normalizePaymentHistoryEntry(entry);
+  const existing = Array.isArray(user && user.paymentHistory) ? user.paymentHistory : [];
+  const withoutSameKey = normalizedEntry.dedupKey
+    ? existing.filter((item) => normalizeText(item && item.dedupKey) !== normalizedEntry.dedupKey)
+    : existing;
+  return {
+    ...user,
+    paymentHistory: normalizePaymentHistory([normalizedEntry, ...withoutSameKey])
+  };
 }
 
 function normalizeDateTime(value) {
@@ -2433,6 +2583,7 @@ function serializeUser(user) {
   const linkedDoctors = normalizeCompanyDoctors(user.linkedDoctors);
   const activityLog = normalizeCompanyActivityLog(user.activityLog);
   const documentHistory = normalizeCompanyDocumentHistory(user.documentHistory, Number(user.usageCount || 0));
+  const paymentHistory = normalizePaymentHistory(user.paymentHistory);
   return {
     id: user.id,
     company: user.company,
@@ -2483,6 +2634,7 @@ function serializeUser(user) {
     linkedDoctors,
     activityLog,
     documentHistory,
+    paymentHistory,
     renewalStage: renewal.stage,
     renewalLabel: renewal.label,
     renewalDaysRemaining: renewal.daysRemaining,
@@ -2741,30 +2893,44 @@ function touchUserLastAccess(userId) {
   }
 }
 
-function queueMercadoPagoWebhookProcessing(body) {
-  const notification = extractMercadoPagoNotification(body);
+function queueMercadoPagoWebhookProcessing(body, requestUrl) {
+  const notification = extractMercadoPagoNotification(body, requestUrl);
   if (!notification.id || !notification.type || !MP_ACCESS_TOKEN) {
     return Promise.resolve();
   }
   if (notification.type === "subscription") {
     return fetchMercadoPagoSubscription(notification.id).then((subscription) => syncSubscriptionIntoUser(subscription));
   }
+  if (notification.type === "subscription_payment") {
+    return fetchMercadoPagoAuthorizedPayment(notification.id).then((authorizedPayment) => syncAuthorizedPaymentIntoUser(authorizedPayment));
+  }
   return fetchMercadoPagoPayment(notification.id).then((payment) => syncPaymentIntoUser(payment));
 }
 
-function extractMercadoPagoNotification(body) {
-  if (!body || typeof body !== "object") {
-    return { id: "", type: "" };
-  }
-  const rawType = normalizeText(body.type || body.topic || body.action).toLowerCase();
-  const id = body.data && body.data.id
-    ? String(body.data.id)
-    : (body.id ? String(body.id) : "");
+function extractMercadoPagoNotification(body, requestUrl) {
+  const params = requestUrl instanceof URL ? requestUrl.searchParams : new URLSearchParams();
+  const safeBody = body && typeof body === "object" ? body : {};
+  const rawType = normalizeText(
+    params.get("type")
+    || params.get("topic")
+    || safeBody.type
+    || safeBody.topic
+    || safeBody.action
+  ).toLowerCase();
+  const id = normalizeText(
+    params.get("data.id")
+    || params.get("id")
+    || (safeBody.data && safeBody.data.id ? String(safeBody.data.id) : "")
+    || (safeBody.id ? String(safeBody.id) : "")
+  );
 
   if (!id) {
     return { id: "", type: "" };
   }
 
+  if (rawType.includes("authorized_payment")) {
+    return { id, type: "subscription_payment" };
+  }
   if (rawType.includes("subscription") || rawType.includes("preapproval")) {
     return { id, type: "subscription" };
   }
@@ -2772,6 +2938,68 @@ function extractMercadoPagoNotification(body) {
     return { id, type: "payment" };
   }
   return { id: "", type: "" };
+}
+
+function validateMercadoPagoWebhookSignature(req, requestUrl, body) {
+  if (!MP_WEBHOOK_SECRET) {
+    return { valid: true };
+  }
+
+  const rawSignature = normalizeText(req && req.headers ? req.headers["x-signature"] : "");
+  const requestId = normalizeText(req && req.headers ? req.headers["x-request-id"] : "");
+  const signature = parseMercadoPagoSignatureHeader(rawSignature);
+  const notification = extractMercadoPagoNotification(body, requestUrl);
+  const manifest = buildMercadoPagoWebhookManifest({
+    notificationId: notification.id,
+    requestId,
+    timestamp: signature.ts
+  });
+
+  if (!signature.ts || !signature.v1 || !requestId || !manifest) {
+    return { valid: false };
+  }
+
+  const expected = crypto
+    .createHmac("sha256", MP_WEBHOOK_SECRET)
+    .update(manifest)
+    .digest("hex");
+
+  const incoming = String(signature.v1 || "").toLowerCase();
+  const left = Buffer.from(expected, "utf8");
+  const right = Buffer.from(incoming, "utf8");
+  if (left.length !== right.length) {
+    return { valid: false };
+  }
+
+  return { valid: crypto.timingSafeEqual(left, right) };
+}
+
+function parseMercadoPagoSignatureHeader(value) {
+  return String(value || "")
+    .split(",")
+    .reduce((accumulator, part) => {
+      const [rawKey, rawValue] = String(part || "").split("=");
+      const key = normalizeText(rawKey).toLowerCase();
+      const parsedValue = normalizeText(rawValue);
+      if (key && parsedValue) {
+        accumulator[key] = parsedValue;
+      }
+      return accumulator;
+    }, { ts: "", v1: "" });
+}
+
+function buildMercadoPagoWebhookManifest({ notificationId, requestId, timestamp }) {
+  const segments = [];
+  if (notificationId) {
+    segments.push(`id:${String(notificationId).toLowerCase()};`);
+  }
+  if (requestId) {
+    segments.push(`request-id:${requestId};`);
+  }
+  if (timestamp) {
+    segments.push(`ts:${timestamp};`);
+  }
+  return segments.join("");
 }
 
 function syncPaymentIntoUser(payment) {
@@ -2785,7 +3013,7 @@ function syncPaymentIntoUser(payment) {
   const paymentStatus = normalizeMercadoPagoPaymentStatus(payment.status);
   const approvedAt = payment.date_approved ? new Date(payment.date_approved) : new Date();
   const dueAt = paymentStatus === "approved" ? addMonths(approvedAt, Number(user.billingCycleMonths || 1)).toISOString() : user.paymentDueAt;
-  return updateUserRecord(user.id, (current) => ({
+  return updateUserRecord(user.id, (current) => appendPaymentHistory({
     ...current,
     status: paymentStatus === "approved" ? "active" : (current.status === "blocked" ? "blocked" : "inadimplente"),
     paymentStatus,
@@ -2797,7 +3025,64 @@ function syncPaymentIntoUser(payment) {
     lastPaymentAttemptAt: new Date().toISOString(),
     mpLastPaymentId: String(payment.id || ""),
     updatedAt: new Date().toISOString()
+  }, {
+    title: paymentStatus === "approved"
+      ? "Pagamento aprovado"
+      : paymentStatus === "pending"
+        ? "Pagamento em processamento"
+        : paymentStatus === "rejected"
+          ? "Pagamento recusado"
+          : paymentStatus === "cancelled"
+            ? "Pagamento cancelado"
+            : "Pagamento expirado",
+    details: paymentStatus === "approved"
+      ? "O Mercado Pago confirmou a cobranca e o acesso foi liberado automaticamente."
+      : "O status comercial retornou pelo Mercado Pago e foi sincronizado com o cadastro.",
+    status: paymentStatus,
+    provider: "mercadopago",
+    source: "webhook",
+    referenceId: String(payment.id || ""),
+    amountCents: Number.isFinite(Number(payment.transaction_amount))
+      ? Math.round(Number(payment.transaction_amount) * 100)
+      : null,
+    dedupKey: `payment:${String(payment.id || "")}:${paymentStatus}`
   }));
+}
+
+async function syncAuthorizedPaymentIntoUser(authorizedPayment) {
+  if (!authorizedPayment) {
+    return null;
+  }
+
+  let updatedUser = null;
+  const paymentId = authorizedPayment.payment && authorizedPayment.payment.id
+    ? String(authorizedPayment.payment.id)
+    : "";
+  if (paymentId) {
+    try {
+      updatedUser = await fetchMercadoPagoPayment(paymentId).then((payment) => syncPaymentIntoUser(payment));
+    } catch (error) {
+      updatedUser = null;
+    }
+  } else if (authorizedPayment.external_reference) {
+    updatedUser = syncPaymentIntoUser({
+      id: authorizedPayment.id,
+      external_reference: authorizedPayment.external_reference,
+      status: authorizedPayment.status || (authorizedPayment.payment ? authorizedPayment.payment.status : ""),
+      date_approved: authorizedPayment.debit_date || authorizedPayment.last_modified || authorizedPayment.date_created || null,
+      transaction_amount: authorizedPayment.value || authorizedPayment.amount || 0
+    });
+  }
+
+  if (authorizedPayment.preapproval_id) {
+    try {
+      await fetchMercadoPagoSubscription(String(authorizedPayment.preapproval_id)).then((subscription) => syncSubscriptionIntoUser(subscription));
+    } catch (error) {
+      // Mantem o fluxo do pagamento mesmo quando o espelho da assinatura ainda nao estiver disponivel.
+    }
+  }
+
+  return updatedUser;
 }
 
 function syncSubscriptionIntoUser(subscription) {
@@ -2815,7 +3100,7 @@ function syncSubscriptionIntoUser(subscription) {
 
   const subscriptionStatus = normalizeMercadoPagoSubscriptionStatus(subscription.status);
   return updateUserRecord(user.id, (current) => {
-    const next = {
+    let next = {
       ...current,
       mpSubscriptionId: String(subscription.id || current.mpSubscriptionId || ""),
       mpSubscriptionStatus: subscriptionStatus,
@@ -2828,6 +3113,29 @@ function syncSubscriptionIntoUser(subscription) {
         next.status = "inadimplente";
       }
     }
+
+    next = appendPaymentHistory(next, {
+      title: subscriptionStatus === "authorized"
+        ? "Assinatura autorizada"
+        : subscriptionStatus === "pending"
+          ? "Assinatura pendente"
+          : subscriptionStatus === "paused"
+            ? "Assinatura pausada"
+            : subscriptionStatus === "cancelled"
+              ? "Assinatura cancelada"
+              : "Assinatura atualizada",
+      details: subscriptionStatus === "cancelled"
+        ? "A assinatura recorrente foi cancelada no Mercado Pago e o cadastro entrou em observacao comercial."
+        : "O status da assinatura recorrente foi sincronizado automaticamente pelo Mercado Pago.",
+      status: subscriptionStatus,
+      provider: "mercadopago",
+      source: "webhook",
+      referenceId: String(subscription.id || ""),
+      amountCents: Number.isFinite(Number(subscription.auto_recurring && subscription.auto_recurring.transaction_amount))
+        ? Math.round(Number(subscription.auto_recurring.transaction_amount) * 100)
+        : null,
+      dedupKey: `subscription:${String(subscription.id || "")}:${subscriptionStatus}`
+    });
 
     return next;
   });
@@ -2941,6 +3249,10 @@ function fetchMercadoPagoPayment(paymentId) {
 
 function fetchMercadoPagoSubscription(subscriptionId) {
   return mercadoPagoRequest("GET", `/preapproval/${encodeURIComponent(String(subscriptionId))}`);
+}
+
+function fetchMercadoPagoAuthorizedPayment(authorizedPaymentId) {
+  return mercadoPagoRequest("GET", `/authorized_payments/${encodeURIComponent(String(authorizedPaymentId))}`);
 }
 
 function updateMercadoPagoSubscription(subscriptionId, payload) {

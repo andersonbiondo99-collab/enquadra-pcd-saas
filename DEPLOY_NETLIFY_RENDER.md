@@ -20,23 +20,24 @@ So o frontend deve ficar no Netlify. O backend deve rodar separado.
 - `frontend`: pode usar proxy `/api` ou falar direto com o backend publicado
 - `Render disk`: persistencia dos arquivos de dados
 
-## Variaveis do Netlify
+## Dominio proprio e frontend
 
-O frontend ja sai apontando por padrao para:
+Se voce usar o proprio `Render` como ambiente oficial, o frontend passa a preferir o dominio aberto no navegador. Isso facilita publicar em:
 
 - `https://enquadra-pcd-saas.onrender.com`
+- `https://app.seudominio.com.br`
 
-Se quiser trocar o backend, voce pode:
+Se quiser manter `frontend` e `backend` separados, voce pode:
 
-- alterar a meta `davicore-app-origin`
+- preencher a meta `davicore-api-origin` com a URL do backend publicado
 - ou manter o proxy do Netlify com `NETLIFY_BACKEND_URL`
 
 ## Variaveis do Render
 
 Crie no Render:
 
-- `APP_BASE_URL=https://SEU-BACKEND.onrender.com`
-- `ALLOWED_ORIGINS=https://SEU-SITE.netlify.app,https://SEU-DOMINIO.com`
+- `APP_BASE_URL=https://app.seudominio.com.br`
+- `ALLOWED_ORIGINS=https://app.seudominio.com.br,https://enquadra-pcd-saas.onrender.com`
 - `MP_ACCESS_TOKEN=...`
 - `MP_WEBHOOK_SECRET=...`
 
@@ -45,6 +46,17 @@ O `render.yaml` ja foi preparado para usar:
 - `DATA_DIR=/opt/render/project/src/persisted-data`
 - disco persistente montado nesse caminho
 - `ALLOWED_ORIGINS` como variavel configuravel para o frontend publicado
+
+## Mercado Pago em producao
+
+Para operar em venda real:
+
+- configure `MP_ACCESS_TOKEN` com a credencial de producao
+- configure `MP_WEBHOOK_SECRET` com o segredo do webhook
+- aponte o webhook do Mercado Pago para `https://SEU-DOMINIO/api/webhooks/mercadopago`
+- habilite no painel do Mercado Pago eventos de pagamento e de assinatura recorrente
+
+O backend agora valida a assinatura `x-signature` e trata tambem notificacoes de assinatura recorrente, incluindo cobrancas mensais autorizadas.
 
 ## Observacao importante
 

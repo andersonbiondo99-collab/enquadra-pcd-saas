@@ -186,11 +186,30 @@ const startPcdDigital = () => {
     return isLocalRuntime ? "" : configured;
   }
 
+  function getConfiguredApiOrigin() {
+    const meta = document.querySelector('meta[name="davicore-api-origin"]');
+    const configured = normalizeAppOrigin(meta ? meta.getAttribute("content") : "");
+    const isLocalRuntime = window.location.protocol === "file:"
+      || /^(localhost|127\.0\.0\.1)$/i.test(window.location.hostname || "");
+    return isLocalRuntime ? "" : configured;
+  }
+
   function getPreferredAppOrigin() {
-    const configured = getConfiguredAppOrigin();
-    if (configured) return configured;
+    const configuredApi = getConfiguredApiOrigin();
+    if (configuredApi) return configuredApi;
 
     const browserOrigin = normalizeAppOrigin(window.location.origin);
+    const isHostedRuntime = window.location.protocol !== "file:"
+      && !/^(localhost|127\.0\.0\.1)$/i.test(window.location.hostname || "")
+      && /^https?:\/\//i.test(browserOrigin);
+    const configured = getConfiguredAppOrigin();
+
+    if (isHostedRuntime && !/\.netlify\.app$/i.test(window.location.hostname || "")) {
+      return browserOrigin;
+    }
+
+    if (configured) return configured;
+
     if (/^https?:\/\//i.test(browserOrigin)) {
       return browserOrigin;
     }
@@ -4763,6 +4782,20 @@ const startPcdDigital = () => {
   }
 
   function serializeLocalUser(user) {
+    const plan = user.role === "admin" ? null : getPlanCatalogById(user.planId || "individual_25");
+    const planBillingModel = user.role === "admin"
+      ? "internal"
+      : normalizeClientPlanBillingModel(user.planBillingModel || (plan ? plan.billingModel : "one_time"));
+    const planLaudoLimit = user.planLaudoLimit === null || user.planLaudoLimit === undefined
+      ? (plan && plan.laudoLimit !== undefined ? plan.laudoLimit : null)
+      : Number(user.planLaudoLimit);
+    const currentCycleUsageCount = Math.max(0, Number(user.currentCycleUsageCount !== undefined ? user.currentCycleUsageCount : user.usageCount || 0));
+    const quotaPeriod = user.role === "admin"
+      ? "none"
+      : normalizeClientPlanQuotaPeriod(user.planQuotaPeriod || (plan ? plan.quotaPeriod : ""), planBillingModel, planLaudoLimit);
+    const remainingLaudos = planLaudoLimit === null || planLaudoLimit === undefined
+      ? null
+      : Math.max(0, Number(planLaudoLimit || 0) - currentCycleUsageCount);
     return {
       id: user.id,
       company: user.company,
@@ -14519,14 +14552,25 @@ const startPcdDigital = () => {
       planLabel: user.planLabel || (user.role === "admin" ? "Administracao interna" : ((getPlanCatalogById(user.planId || "individual_25") || {}).label || "Individual Essencial")),
       planPriceCents: Number(user.planPriceCents || 0),
       billingCycleMonths: Number(user.billingCycleMonths || 0),
-      planLaudoLimit: user.planLaudoLimit === null || user.planLaudoLimit === undefined ? null : Number(user.planLaudoLimit),
+      planLaudoLimit: planLaudoLimit === null || planLaudoLimit === undefined ? null : Number(planLaudoLimit),
+      planBillingModel,
+      planQuotaPeriod: quotaPeriod,
       usageCount: Number(user.usageCount || 0),
+      currentCycleUsageCount,
+      remainingLaudos,
       lastAccessAt: user.lastAccessAt || null,
       notes: user.notes || "",
       expiresAt: user.expiresAt || null,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
       isAdmin: user.role === "admin",
+      paymentProvider: user.paymentProvider || "manual",
+      mpPreferenceId: user.mpPreferenceId || "",
+      mpCheckoutUrl: user.mpCheckoutUrl || "",
+      mpLastPaymentId: user.mpLastPaymentId || "",
+      mpSubscriptionId: user.mpSubscriptionId || "",
+      mpSubscriptionStatus: user.mpSubscriptionStatus || "",
+      paymentHistory: Array.isArray(user.paymentHistory) ? user.paymentHistory : [],
       accountType: normalizeAccountType(user.accountType),
       crmNumber: user.crmNumber || "",
       crmState: user.crmState || "",
@@ -14640,6 +14684,100 @@ const startPcdDigital = () => {
       return "Vence hoje";
     }
     return `${daysRemaining} dia(s) restantes`;
+  }
+
+  function formatSubscriptionStatusLabel(status) {
+    const normalized = String(status || "").trim().toLowerCase();
+    if (normalized === "authorized") return "Assinatura autorizada";
+    if (normalized === "pending") return "Assinatura pendente";
+    if (normalized === "paused") return "Assinatura pausada";
+    if (normalized === "cancelled") return "Assinatura cancelada";
+    return normalized ? toPresentationText(normalized) : "Nao se aplica";
+  }
+
+  function formatUserQuotaSummary(user) {
+    const rawLimit = user && user.planLaudoLimit !== null && user.planLaudoLimit !== undefined
+      ? Number(user.planLaudoLimit)
+      : null;
+    if (!rawLimit) {
+      return "Sem franquia de laudos";
+    }
+    const currentCycleUsage = Math.max(0, Number(user && user.currentCycleUsageCount !== undefined
+      ? user.currentCycleUsageCount
+      : (user && user.usageCount) || 0));
+    const remaining = Number.isFinite(Number(user && user.remainingLaudos))
+      ? Math.max(0, Number(user.remainingLaudos))
+      : Math.max(0, rawLimit - currentCycleUsage);
+    const quotaPeriod = normalizeClientPlanQuotaPeriod(user && user.planQuotaPeriod, user && user.planBillingModel, rawLimit);
+    return quotaPeriod === "monthly"
+      ? `${remaining} restante(s) de ${rawLimit} no ciclo mensal`
+      : `${remaining} restante(s) de ${rawLimit} no ciclo contratado`;
+  }
+
+  function normalizeAdminPaymentHistory(entries) {
+    if (!Array.isArray(entries)) {
+      return [];
+    }
+    return entries
+      .map((entry) => {
+        const occurredAt = entry && entry.occurredAt ? new Date(entry.occurredAt) : null;
+        return {
+          id: String(entry && entry.id ? entry.id : ""),
+          title: toPresentationText(entry && entry.title ? entry.title : "Atualizacao comercial"),
+          details: toPresentationText(entry && entry.details ? entry.details : ""),
+          status: String(entry && entry.status ? entry.status : "info").trim().toLowerCase() || "info",
+          provider: toPresentationText(entry && entry.provider ? entry.provider : "manual"),
+          source: toPresentationText(entry && entry.source ? entry.source : "system"),
+          referenceId: toPresentationText(entry && entry.referenceId ? entry.referenceId : ""),
+          amountCents: Number.isFinite(Number(entry && entry.amountCents)) ? Math.max(0, Math.round(Number(entry.amountCents))) : null,
+          occurredAt: occurredAt && !Number.isNaN(occurredAt.getTime()) ? occurredAt.toISOString() : "",
+          sortValue: occurredAt && !Number.isNaN(occurredAt.getTime()) ? occurredAt.getTime() : 0
+        };
+      })
+      .filter((entry) => entry.title)
+      .sort((left, right) => right.sortValue - left.sortValue)
+      .slice(0, 6);
+  }
+
+  function getPaymentHistoryStatusClass(status) {
+    const normalized = String(status || "").trim().toLowerCase();
+    if (normalized === "approved" || normalized === "authorized") return "is-approved";
+    if (normalized === "pending") return "is-pending";
+    if (normalized === "rejected" || normalized === "cancelled" || normalized === "expired" || normalized === "paused") return "is-alert";
+    return "is-neutral";
+  }
+
+  function formatPaymentHistoryStatusLabel(status) {
+    const normalized = String(status || "").trim().toLowerCase();
+    if (["approved", "pending", "rejected", "cancelled", "expired"].includes(normalized)) {
+      return formatPaymentStatusLabel(normalized);
+    }
+    return formatSubscriptionStatusLabel(normalized);
+  }
+
+  function buildAdminPaymentHistoryHtml(user) {
+    const history = normalizeAdminPaymentHistory(user && user.paymentHistory);
+    if (!history.length) {
+      return '<div class="attachment-empty">Nenhum evento comercial registrado ainda para esta conta.</div>';
+    }
+    return history.map((entry) => `
+      <article class="payment-history-item">
+        <div class="payment-history-head">
+          <div>
+            <strong class="payment-history-title">${escapeHtml(entry.title)}</strong>
+            <p>${escapeHtml(entry.details || "Evento sincronizado no cadastro comercial.")}</p>
+          </div>
+          <span class="payment-history-status ${getPaymentHistoryStatusClass(entry.status)}">${escapeHtml(formatPaymentHistoryStatusLabel(entry.status))}</span>
+        </div>
+        <div class="payment-history-meta">
+          <span class="section-chip">${escapeHtml(entry.provider || "Manual")}</span>
+          <span class="section-chip">${escapeHtml(entry.source || "Sistema")}</span>
+          ${entry.amountCents !== null ? `<span class="section-chip">${escapeHtml(formatCurrencyCents(entry.amountCents))}</span>` : ""}
+          ${entry.referenceId ? `<span class="section-chip">Ref. ${escapeHtml(entry.referenceId)}</span>` : ""}
+          <span class="section-chip">${escapeHtml(formatInlineAdminDateTime(entry.occurredAt))}</span>
+        </div>
+      </article>
+    `).join("");
   }
 
   function ensureRenewalBanner() {
@@ -15404,6 +15542,28 @@ const startPcdDigital = () => {
       const createdAt = escapeHtml(formatInlineAdminDateTime(user.createdAt));
       const lastAccessAt = escapeHtml(formatInlineAdminDateTime(user.lastAccessAt));
       const notes = escapeHtml(toPresentationText(user.notes || "", true));
+      const billingModelLabel = user.role === "admin"
+        ? "Administracao interna"
+        : formatPlanBillingModelLabel(user.planBillingModel);
+      const quotaPeriodLabel = user.role === "admin"
+        ? "Sem franquia de laudos"
+        : formatPlanQuotaPeriodLabel(user);
+      const quotaSummary = user.role === "admin"
+        ? "Sem franquia de laudos"
+        : formatUserQuotaSummary(user);
+      const currentCycleUsageLabel = user.role === "admin"
+        ? "Nao se aplica"
+        : `${Math.max(0, Number(user.currentCycleUsageCount !== undefined ? user.currentCycleUsageCount : user.usageCount || 0))} utilizado(s) no ciclo`;
+      const paymentProviderLabel = user.role === "admin"
+        ? "Operacao interna"
+        : toPresentationText(user.paymentProvider || "mercadopago");
+      const subscriptionStatusLabel = user.role === "admin"
+        ? "Nao se aplica"
+        : formatSubscriptionStatusLabel(user.mpSubscriptionStatus);
+      const lastApprovedLabel = user.paymentLastApprovedAt
+        ? escapeHtml(formatInlineAdminDateTime(user.paymentLastApprovedAt))
+        : "Nao registrado";
+      const paymentHistoryHtml = buildAdminPaymentHistoryHtml(user);
       const renewal = getRenewalSnapshot(user);
       const renewalStageClass = renewal.stage === "attention"
         ? "attention"
@@ -15525,6 +15685,64 @@ const startPcdDigital = () => {
               <div class="meta-box"><strong>Pagamento</strong><span>${escapeHtml(paymentLabel)}</span></div>
             </div>
           </div>
+
+          ${user.role !== "admin" ? `
+            <div class="admin-user-section">
+              <div class="admin-user-section-head">
+                <div>
+                  <h4>Cobranca, franquia e assinatura</h4>
+                  <p>Veja o modelo financeiro do cliente, a franquia ativa e o status operacional da cobranca sem sair da ficha.</p>
+                </div>
+              </div>
+
+              <div class="admin-payment-grid">
+                <article class="admin-payment-box">
+                  <span>Modelo de cobranca</span>
+                  <strong>${escapeHtml(billingModelLabel)}</strong>
+                </article>
+                <article class="admin-payment-box">
+                  <span>Franquia do plano</span>
+                  <strong>${escapeHtml(quotaSummary)}</strong>
+                </article>
+                <article class="admin-payment-box">
+                  <span>Consumo do ciclo</span>
+                  <strong>${escapeHtml(currentCycleUsageLabel)}</strong>
+                </article>
+                <article class="admin-payment-box">
+                  <span>Periodicidade</span>
+                  <strong>${escapeHtml(quotaPeriodLabel)}</strong>
+                </article>
+                <article class="admin-payment-box">
+                  <span>Ultima aprovacao</span>
+                  <strong>${lastApprovedLabel}</strong>
+                </article>
+                <article class="admin-payment-box">
+                  <span>Status da assinatura</span>
+                  <strong>${escapeHtml(subscriptionStatusLabel)}</strong>
+                </article>
+                <article class="admin-payment-box">
+                  <span>Gateway</span>
+                  <strong>${escapeHtml(paymentProviderLabel)}</strong>
+                </article>
+                <article class="admin-payment-box">
+                  <span>Referencias MP</span>
+                  <strong>${escapeHtml(user.mpSubscriptionId || user.mpLastPaymentId || user.mpPreferenceId || "Nao registrado")}</strong>
+                </article>
+              </div>
+            </div>
+
+            <div class="admin-user-section">
+              <div class="admin-user-section-head">
+                <div>
+                  <h4>Historico comercial</h4>
+                  <p>Acompanhe checkout, aprovacoes, recusas, renovacoes e ajustes administrativos em ordem cronologica.</p>
+                </div>
+              </div>
+              <div class="payment-history-list">
+                ${paymentHistoryHtml}
+              </div>
+            </div>
+          ` : ""}
 
           ${user.role !== "admin" ? `
             <div class="admin-user-section">
@@ -15810,15 +16028,15 @@ const startPcdDigital = () => {
     const insights = [
       {
         title: "Triagem guiada por tipo de deficiência",
-        text: "Campos estruturados, menos retrabalho e descrições técnico-funcionais com padrão mais consistente."
+        text: "Campos estruturados reduzem retrabalho e ajudam a manter o parecer técnico mais consistente desde o primeiro registro."
       },
       {
         title: "Fluxos separados por perfil de contratação",
-        text: "Empresa, médico e administração acessam jornadas distintas, com governança e permissões mais claras."
+        text: "Empresa, médico e administração operam jornadas distintas, com governança clara e menor risco de uso indevido."
       },
       {
-        title: "Laudo melhor estruturado desde o início",
-        text: "O sistema conduz a coleta essencial para sustentar descrição clínica, limitações funcionais e documentação complementar."
+        title: "Laudo estruturado desde a triagem",
+        text: "A coleta essencial fica orientada desde o início para sustentar descrição clínica, limitações funcionais e documentação complementar."
       }
     ];
 
@@ -16344,7 +16562,7 @@ const startPcdDigital = () => {
         ? "Fluxo inicial do administrador principal da plataforma."
         : isRegister
           ? (isDoctorJourney
-            ? "Cadastro exclusivo para médico com CRM válido e pagamento por emissão de documento."
+            ? "Cadastro exclusivo para médico com CRM válido, assinatura mensal de 30 laudos ou pacote avulso, sempre condicionado ao pagamento aprovado."
             : "Cadastro empresarial voltado ao dashboard administrativo, gestao de medicos vinculados e indicadores de uso.")
           : (isAdmin
             ? "Entrada restrita para clientes, pagamentos, bloqueios, renovações e acompanhamento de uso."
@@ -16414,7 +16632,7 @@ const startPcdDigital = () => {
 
     setText(".sales-brand-chip", "Plataforma corporativa");
     setText(".sales-hero-copy h3", "Caracterização de PCD com padrão corporativo, clareza documental e segurança técnica.");
-    setText(".sales-hero-copy p", "Solução desenvolvida para médicos e empresas que precisam padronizar a análise funcional, fortalecer a qualidade do laudo e ganhar previsibilidade operacional.");
+    setText(".sales-hero-copy p", "Solução desenvolvida para médicos e empresas que precisam padronizar a análise funcional, elevar a qualidade do laudo e operar com mais previsibilidade.");
 
     setHtml(".sales-hero-actions", `
       <button class="primary-button sales-primary-button" type="button" id="heroPlansButton">Conhecer planos</button>
@@ -16424,7 +16642,7 @@ const startPcdDigital = () => {
       <div class="hero-insight-visual" id="heroInsightVisual" aria-hidden="true">
         <span class="hero-insight-chip">Vis&atilde;o do produto</span>
         <strong class="hero-insight-title" id="heroInsightTitle">Triagem guiada por tipo de defici&ecirc;ncia</strong>
-        <p class="hero-insight-text" id="heroInsightText">Campos estruturados, menos retrabalho e descri&ccedil;&otilde;es t&eacute;cnico-funcionais com padr&atilde;o mais consistente.</p>
+        <p class="hero-insight-text" id="heroInsightText">Campos estruturados reduzem retrabalho e ajudam a manter o parecer t&eacute;cnico consistente desde o primeiro registro.</p>
         <div class="hero-insight-dots" id="heroInsightDots">
           <span class="hero-insight-dot is-active"></span>
           <span class="hero-insight-dot"></span>
