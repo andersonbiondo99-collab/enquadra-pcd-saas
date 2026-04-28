@@ -386,6 +386,7 @@ const startPcdDigital = () => {
     adminUsersCache: [],
     adminUserSearch: "",
     adminUserFilter: "active_company",
+    adminCreateProfile: "",
     isRepairingText: false,
     textRepairObserver: null,
     pendingTextRepairFrame: 0,
@@ -1096,6 +1097,7 @@ const startPcdDigital = () => {
     updatePhysicalFieldVisibility();
     updateAudiometryAverages();
     updateVisualFieldVisibility();
+    syncAllCidDescriptionFields({ normalizeCodeField: true });
 
     renderIdleResult({
       title: `Módulo ${config.title}`,
@@ -1600,6 +1602,7 @@ const startPcdDigital = () => {
     toggleField("physicalClinicalBasisField", Boolean(choice));
     toggleField("physicalSupportDocsField", Boolean(choice));
     toggleField("physicalCidField", Boolean(choice));
+    toggleField("physicalCidDescriptionField", Boolean(choice));
     toggleField("physicalMovementFocusField", movementDriven && Boolean(resolvePhysicalSegment()));
     toggleField("physicalAnatomicalLossField", showAnatomicalLoss);
     toggleField("physicalStrengthPatternField", showStrength);
@@ -1639,6 +1642,7 @@ const startPcdDigital = () => {
     populateMovementFocusOptions(resolvePhysicalSegment());
     populateStrengthPatternOptions(resolvePhysicalFunctionFamily());
     renderPhysicalFunctionOptions();
+    syncAllCidDescriptionFields();
   }
 
   function toggleField(id, shouldShow) {
@@ -7169,6 +7173,29 @@ const startPcdDigital = () => {
     refs.adminEmail = $("#adminEmail");
     refs.adminUsername = $("#adminUsername");
     refs.adminPassword = $("#adminPassword");
+    refs.adminCreateSectionTitle = $("#adminCreateSectionTitle");
+    refs.adminCreateProfile = $("#adminCreateProfile");
+    refs.adminCreateTypeShell = $("#adminCreateTypeShell");
+    refs.adminCreateTypeSummary = $("#adminCreateTypeSummary");
+    refs.adminCreateTypeButtons = $$("[data-admin-create-profile]");
+    refs.adminCreateDetails = $("#adminCreateDetails");
+    refs.adminCreateFieldsTitle = $("#adminCreateFieldsTitle");
+    refs.adminCreateFieldsSummary = $("#adminCreateFieldsSummary");
+    refs.adminCompanyField = $("#adminCompanyField");
+    refs.adminContactNameField = $("#adminContactNameField");
+    refs.adminEmailField = $("#adminEmailField");
+    refs.adminUsernameField = $("#adminUsernameField");
+    refs.adminPasswordField = $("#adminPasswordField");
+    refs.adminRoleField = $("#adminRoleField");
+    refs.adminAccountTypeField = $("#adminAccountTypeField");
+    refs.adminCrmNumberField = $("#adminCrmNumberField");
+    refs.adminCrmStateField = $("#adminCrmStateField");
+    refs.adminCrmValidatedField = $("#adminCrmValidatedField");
+    refs.adminStatusField = $("#adminStatusField");
+    refs.adminPaymentStatusField = $("#adminPaymentStatusField");
+    refs.adminPlanField = $("#adminPlanField");
+    refs.adminPaymentDueAtField = $("#adminPaymentDueAtField");
+    refs.adminNotesField = $("#adminNotesField");
     refs.adminRole = $("#adminRole");
     refs.adminAccountType = $("#adminAccountType");
     refs.adminCrmNumber = $("#adminCrmNumber");
@@ -7191,6 +7218,14 @@ const startPcdDigital = () => {
 
     if (refs.createUserForm) {
       refs.createUserForm.addEventListener("submit", handleInlineAdminCreateUser);
+    }
+
+    if (refs.adminCreateTypeButtons && refs.adminCreateTypeButtons.length) {
+      refs.adminCreateTypeButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          syncInlineAdminCreateForm({ profile: button.dataset.adminCreateProfile || "" });
+        });
+      });
     }
 
     if (refs.adminViewButtons && refs.adminViewButtons.length) {
@@ -8898,26 +8933,42 @@ const startPcdDigital = () => {
   async function handleInlineAdminCreateUser(event) {
     event.preventDefault();
 
+    const profile = getAdminCreateProfile();
+    if (!profile) {
+      if (refs.adminStatusNote) {
+        refs.adminStatusNote.textContent = "Escolha primeiro se o novo cadastro será de administrador, empresa ou médico.";
+      }
+      return;
+    }
+
     const payload = {
       company: refs.adminCompany ? refs.adminCompany.value.trim() : "",
       contactName: refs.adminContactName ? refs.adminContactName.value.trim() : "",
       email: refs.adminEmail ? refs.adminEmail.value.trim().toLowerCase() : "",
       username: refs.adminUsername ? refs.adminUsername.value.trim() : "",
       password: refs.adminPassword ? refs.adminPassword.value : "",
-      role: refs.adminRole ? refs.adminRole.value : "buyer",
-      accountType: refs.adminAccountType ? normalizeAccountType(refs.adminAccountType.value) : "company",
+      role: profile === "admin" ? "admin" : "buyer",
+      accountType: profile === "doctor" ? "doctor" : "company",
       crmNumber: refs.adminCrmNumber ? refs.adminCrmNumber.value.replace(/\D/g, "") : "",
       crmState: refs.adminCrmState ? refs.adminCrmState.value : "",
       crmValidated: refs.adminCrmValidated ? refs.adminCrmValidated.value === "true" : false,
-      status: refs.adminStatus ? refs.adminStatus.value : "active",
-      paymentStatus: refs.adminPaymentStatus ? refs.adminPaymentStatus.value : "pending",
-      paymentDueAt: refs.adminPaymentDueAt && refs.adminPaymentDueAt.value ? refs.adminPaymentDueAt.value : null,
-      planId: refs.adminPlan ? refs.adminPlan.value : "",
+      status: profile === "admin" ? "active" : (refs.adminStatus ? refs.adminStatus.value : "active"),
+      paymentStatus: profile === "admin" ? "approved" : (refs.adminPaymentStatus ? refs.adminPaymentStatus.value : "pending"),
+      paymentDueAt: profile === "admin"
+        ? null
+        : (refs.adminPaymentDueAt && refs.adminPaymentDueAt.value ? refs.adminPaymentDueAt.value : null),
+      planId: profile === "admin" ? "internal" : (refs.adminPlan ? refs.adminPlan.value : ""),
       notes: refs.adminNotes ? refs.adminNotes.value.trim() : ""
     };
 
     if (!payload.company || !payload.username || !payload.password) {
-      if (refs.adminStatusNote) refs.adminStatusNote.textContent = "Preencha empresa, usuario e senha inicial para criar o acesso.";
+      if (refs.adminStatusNote) {
+        refs.adminStatusNote.textContent = profile === "admin"
+          ? "Preencha nome do administrador, usuario e senha inicial para criar o acesso."
+          : (profile === "doctor"
+            ? "Preencha nome do médico, usuario e senha inicial para criar o acesso."
+            : "Preencha empresa, usuario e senha inicial para criar o acesso.");
+      }
       return;
     }
 
@@ -8926,27 +8977,26 @@ const startPcdDigital = () => {
       return;
     }
 
-    if (payload.role !== "admin" && payload.accountType === "doctor" && (!payload.crmNumber || payload.crmNumber.length < 4 || !payload.crmState)) {
+    if (profile === "doctor" && (!payload.crmNumber || payload.crmNumber.length < 4 || !payload.crmState)) {
       if (refs.adminStatusNote) refs.adminStatusNote.textContent = "Para cadastro medico, informe CRM e UF antes de liberar o acesso.";
       return;
     }
 
-    const successMessage = payload.role !== "admin" && payload.accountType === "doctor" && !payload.crmValidated
+    if (profile !== "admin" && !payload.planId) {
+      if (refs.adminStatusNote) refs.adminStatusNote.textContent = "Selecione um plano antes de criar o acesso.";
+      return;
+    }
+
+    const successMessage = profile === "doctor" && !payload.crmValidated
       ? "Acesso criado. O login fica disponivel apos a contratacao, mas a emissao documental permanece bloqueada ate a validacao manual do CRM."
-      : "Acesso criado com sucesso.";
+      : (profile === "admin" ? "Administrador criado com sucesso." : "Acesso criado com sucesso.");
 
     if (state.authProvider === "api") {
       try {
         const response = await apiJson("/api/admin/users", { method: "POST", body: payload });
 
-        if (refs.createUserForm) refs.createUserForm.reset();
+        resetInlineAdminCreateForm();
         populatePlanSelects();
-        if (refs.adminRole) refs.adminRole.value = "buyer";
-        if (refs.adminAccountType) refs.adminAccountType.value = "company";
-        if (refs.adminCrmState) refs.adminCrmState.value = "";
-        if (refs.adminCrmValidated) refs.adminCrmValidated.value = "false";
-        if (refs.adminStatus) refs.adminStatus.value = "active";
-        if (refs.adminPaymentStatus) refs.adminPaymentStatus.value = "pending";
         if (response.summary) renderAdminDashboardSummary(response.summary);
         state.adminExpandedUserId = response && response.user && response.user.id ? response.user.id : "";
         setAdminView("users");
@@ -8970,7 +9020,7 @@ const startPcdDigital = () => {
     }
 
     const passwordHash = await buildAuthHash(payload.password);
-    const plan = getPlanCatalogById(payload.planId || "mensal");
+    const plan = profile === "admin" ? null : getPlanCatalogById(payload.planId || "mensal");
     const newUser = buildLocalUserRecord({
       company: payload.company,
       username: payload.username,
@@ -8995,14 +9045,8 @@ const startPcdDigital = () => {
     users.push(newUser);
     writeLocalUsers(users);
 
-    if (refs.createUserForm) refs.createUserForm.reset();
+    resetInlineAdminCreateForm();
     populatePlanSelects();
-    if (refs.adminRole) refs.adminRole.value = "buyer";
-    if (refs.adminAccountType) refs.adminAccountType.value = "company";
-    if (refs.adminCrmState) refs.adminCrmState.value = "";
-    if (refs.adminCrmValidated) refs.adminCrmValidated.value = "false";
-    if (refs.adminStatus) refs.adminStatus.value = "active";
-    if (refs.adminPaymentStatus) refs.adminPaymentStatus.value = "pending";
     state.adminExpandedUserId = newUser.id;
     setAdminView("users");
     if (refs.adminStatusNote) refs.adminStatusNote.textContent = successMessage;
@@ -17700,6 +17744,232 @@ const startPcdDigital = () => {
     }
   }
 
+  function normalizeAdminCreateProfile(value) {
+    const normalized = String(value || "").trim().toLowerCase();
+    return ["admin", "company", "doctor"].includes(normalized) ? normalized : "";
+  }
+
+  function getAdminCreateProfile() {
+    return normalizeAdminCreateProfile((refs.adminCreateProfile && refs.adminCreateProfile.value) || state.adminCreateProfile);
+  }
+
+  function setAdminCreateFieldLabel(field, label) {
+    const element = field && typeof field.querySelector === "function" ? field.querySelector("span") : null;
+    if (element) {
+      element.textContent = label;
+    }
+  }
+
+  function toggleAdminCreateField(field, visible) {
+    if (field) {
+      field.classList.toggle("hidden", !visible);
+    }
+  }
+
+  function getAdminCreatePlans(profile = getAdminCreateProfile(), catalog = null) {
+    const audienceKey = profile === "doctor" ? "doctor" : (profile === "company" ? "company" : "");
+    if (!audienceKey) {
+      return [];
+    }
+
+    const source = normalizeClientPlanCatalog(catalog || getStoredPlanCatalog({ includeInactive: true }), { includeInactive: true });
+    return source.filter((plan) => normalizeClientPlanAudienceKey(plan.audienceKey || plan.audience) === audienceKey);
+  }
+
+  function syncAdminCreatePlanOptions(preferredPlanId = "") {
+    if (!refs.adminPlan) {
+      return;
+    }
+
+    const profile = getAdminCreateProfile();
+    if (!profile) {
+      refs.adminPlan.innerHTML = '<option value="">Escolha o perfil primeiro</option>';
+      refs.adminPlan.value = "";
+      return;
+    }
+
+    if (profile === "admin") {
+      refs.adminPlan.innerHTML = '<option value="internal">Administracao interna</option>';
+      refs.adminPlan.value = "internal";
+      return;
+    }
+
+    const plans = getAdminCreatePlans(profile, state.planCatalog);
+    if (!plans.length) {
+      refs.adminPlan.innerHTML = '<option value="">Nenhum plano disponivel</option>';
+      refs.adminPlan.value = "";
+      return;
+    }
+
+    const selectedPlanId = plans.some((plan) => plan.id === preferredPlanId)
+      ? preferredPlanId
+      : (plans.some((plan) => plan.id === refs.adminPlan.value) ? refs.adminPlan.value : plans[0].id);
+
+    refs.adminPlan.innerHTML = plans.map((plan) => {
+      const selected = plan.id === selectedPlanId ? " selected" : "";
+      const suffix = plan.status === "inactive" ? " (inativo)" : "";
+      return `<option value="${escapeHtml(plan.id)}"${selected}>${escapeHtml(`${plan.label}${suffix}`)}</option>`;
+    }).join("");
+    refs.adminPlan.value = selectedPlanId;
+  }
+
+  function syncAdminCreatePlanShowcase(catalog = null) {
+    const grid = document.getElementById("adminPlanGrid");
+    if (!grid) {
+      return;
+    }
+
+    const profile = getAdminCreateProfile();
+    const visible = profile === "company" || profile === "doctor";
+    grid.classList.toggle("hidden", !visible);
+
+    if (!visible) {
+      grid.innerHTML = "";
+      return;
+    }
+
+    const plans = getAdminCreatePlans(profile, catalog || state.planCatalog);
+    grid.innerHTML = plans.length
+      ? plans.map((plan) => buildPlanShowcaseCard(plan)).join("")
+      : '<div class="attachment-empty">Nenhum plano comercial disponível para este perfil.</div>';
+  }
+
+  function resetInlineAdminCreateForm() {
+    if (refs.createUserForm) {
+      refs.createUserForm.reset();
+    }
+    state.adminCreateProfile = "";
+    syncInlineAdminCreateForm({ profile: "", preserveStatusNote: true });
+  }
+
+  function syncInlineAdminCreateForm(options = {}) {
+    const profile = normalizeAdminCreateProfile(options.profile !== undefined ? options.profile : getAdminCreateProfile());
+    state.adminCreateProfile = profile;
+
+    if (refs.adminCreateProfile) {
+      refs.adminCreateProfile.value = profile;
+    }
+
+    if (refs.adminCreateTypeButtons) {
+      refs.adminCreateTypeButtons.forEach((button) => {
+        button.classList.toggle("is-active", button.dataset.adminCreateProfile === profile);
+      });
+    }
+
+    if (refs.adminCreateDetails) {
+      refs.adminCreateDetails.classList.toggle("hidden", !profile);
+    }
+
+    toggleAdminCreateField(refs.adminCompanyField, Boolean(profile));
+    toggleAdminCreateField(refs.adminEmailField, Boolean(profile));
+    toggleAdminCreateField(refs.adminUsernameField, Boolean(profile));
+    toggleAdminCreateField(refs.adminPasswordField, Boolean(profile));
+    toggleAdminCreateField(refs.adminContactNameField, profile === "company" || profile === "doctor");
+    toggleAdminCreateField(refs.adminCrmNumberField, profile === "doctor");
+    toggleAdminCreateField(refs.adminCrmStateField, profile === "doctor");
+    toggleAdminCreateField(refs.adminCrmValidatedField, profile === "doctor");
+    toggleAdminCreateField(refs.adminStatusField, profile === "company" || profile === "doctor");
+    toggleAdminCreateField(refs.adminPaymentStatusField, profile === "company" || profile === "doctor");
+    toggleAdminCreateField(refs.adminPlanField, profile === "company" || profile === "doctor");
+    toggleAdminCreateField(refs.adminPaymentDueAtField, profile === "company" || profile === "doctor");
+    toggleAdminCreateField(refs.adminNotesField, Boolean(profile));
+    toggleAdminCreateField(refs.adminRoleField, false);
+    toggleAdminCreateField(refs.adminAccountTypeField, false);
+
+    if (refs.adminRole) {
+      refs.adminRole.value = profile === "admin" ? "admin" : "buyer";
+    }
+    if (refs.adminAccountType) {
+      refs.adminAccountType.value = profile === "doctor" ? "doctor" : "company";
+    }
+    if (refs.adminStatus) {
+      refs.adminStatus.value = "active";
+    }
+    if (refs.adminPaymentStatus) {
+      refs.adminPaymentStatus.value = profile === "admin" ? "approved" : "pending";
+    }
+    if (refs.adminCrmValidated) {
+      refs.adminCrmValidated.value = "false";
+    }
+    if (refs.adminCrmState && profile !== "doctor") {
+      refs.adminCrmState.value = "";
+    }
+    if (refs.adminPaymentDueAt && profile === "admin") {
+      refs.adminPaymentDueAt.value = "";
+    }
+
+    if (refs.adminCreateSectionTitle) {
+      refs.adminCreateSectionTitle.textContent = !profile
+        ? "Escolher perfil de cadastro"
+        : (profile === "admin" ? "Cadastrar administrador" : (profile === "doctor" ? "Cadastrar médico" : "Cadastrar empresa"));
+    }
+
+    if (refs.adminCreateFieldsTitle) {
+      refs.adminCreateFieldsTitle.textContent = profile === "admin"
+        ? "Dados internos do administrador"
+        : (profile === "doctor" ? "Dados do médico e liberação comercial" : "Dados da empresa e liberação comercial");
+    }
+
+    if (refs.adminCreateTypeSummary) {
+      refs.adminCreateTypeSummary.textContent = !profile
+        ? "Escolha primeiro o tipo de cadastro para abrir apenas os campos necessários."
+        : (profile === "admin"
+          ? "Perfil interno, sem CRM nem etapas comerciais visíveis."
+          : (profile === "doctor"
+            ? "Cadastro profissional com CRM, validação manual e plano médico."
+            : "Cadastro empresarial com controle comercial, plano e acesso administrativo."));
+    }
+
+    if (refs.adminCreateFieldsSummary) {
+      refs.adminCreateFieldsSummary.textContent = profile === "admin"
+        ? "Preencha somente os dados essenciais do acesso interno."
+        : (profile === "doctor"
+          ? "O sistema abriu apenas os campos médicos e comerciais necessários para este perfil."
+          : "O sistema abriu somente os campos relevantes para a conta empresarial.");
+    }
+
+    setAdminCreateFieldLabel(refs.adminCompanyField, profile === "doctor" ? "Nome do médico" : (profile === "admin" ? "Nome do administrador" : "Empresa"));
+    setAdminCreateFieldLabel(refs.adminContactNameField, profile === "doctor" ? "Clínica / responsável" : "Responsável");
+    setAdminCreateFieldLabel(refs.adminEmailField, "E-mail");
+    setAdminCreateFieldLabel(refs.adminUsernameField, "Usuário");
+    setAdminCreateFieldLabel(refs.adminPasswordField, "Senha inicial");
+
+    if (refs.adminCompany) {
+      refs.adminCompany.placeholder = profile === "doctor"
+        ? "Nome completo do médico"
+        : (profile === "admin" ? "Nome do administrador" : "Empresa cliente");
+    }
+    if (refs.adminContactName) {
+      refs.adminContactName.placeholder = profile === "doctor"
+        ? "Clínica, consultório ou contato de apoio"
+        : "Contato da conta";
+    }
+    if (refs.adminEmail) {
+      refs.adminEmail.placeholder = profile === "doctor"
+        ? "medico@dominio.com.br"
+        : (profile === "admin" ? "admin@empresa.com.br" : "financeiro@empresa.com.br");
+    }
+    if (refs.adminUsername) {
+      refs.adminUsername.placeholder = profile === "doctor"
+        ? "Login profissional do médico"
+        : (profile === "admin" ? "Login do administrador" : "Login do cliente");
+    }
+    if (refs.adminNotes) {
+      refs.adminNotes.placeholder = profile === "admin"
+        ? "Observações internas sobre este acesso administrativo"
+        : "Controle interno, financeiro ou observações comerciais";
+    }
+
+    syncAdminCreatePlanOptions();
+    syncAdminCreatePlanShowcase(state.planCatalog);
+
+    if (refs.adminStatusNote && !options.preserveStatusNote) {
+      refs.adminStatusNote.textContent = profile
+        ? ""
+        : "Escolha primeiro o tipo de cadastro para abrir o formulário correspondente.";
+    }
+  }
+
   function initInlineAdminPanel() {
     refs.adminPanel = $("#adminPanel");
     refs.createUserForm = $("#createUserForm");
@@ -17708,6 +17978,29 @@ const startPcdDigital = () => {
     refs.adminEmail = $("#adminEmail");
     refs.adminUsername = $("#adminUsername");
     refs.adminPassword = $("#adminPassword");
+    refs.adminCreateSectionTitle = $("#adminCreateSectionTitle");
+    refs.adminCreateProfile = $("#adminCreateProfile");
+    refs.adminCreateTypeShell = $("#adminCreateTypeShell");
+    refs.adminCreateTypeSummary = $("#adminCreateTypeSummary");
+    refs.adminCreateTypeButtons = $$("[data-admin-create-profile]");
+    refs.adminCreateDetails = $("#adminCreateDetails");
+    refs.adminCreateFieldsTitle = $("#adminCreateFieldsTitle");
+    refs.adminCreateFieldsSummary = $("#adminCreateFieldsSummary");
+    refs.adminCompanyField = $("#adminCompanyField");
+    refs.adminContactNameField = $("#adminContactNameField");
+    refs.adminEmailField = $("#adminEmailField");
+    refs.adminUsernameField = $("#adminUsernameField");
+    refs.adminPasswordField = $("#adminPasswordField");
+    refs.adminRoleField = $("#adminRoleField");
+    refs.adminAccountTypeField = $("#adminAccountTypeField");
+    refs.adminCrmNumberField = $("#adminCrmNumberField");
+    refs.adminCrmStateField = $("#adminCrmStateField");
+    refs.adminCrmValidatedField = $("#adminCrmValidatedField");
+    refs.adminStatusField = $("#adminStatusField");
+    refs.adminPaymentStatusField = $("#adminPaymentStatusField");
+    refs.adminPlanField = $("#adminPlanField");
+    refs.adminPaymentDueAtField = $("#adminPaymentDueAtField");
+    refs.adminNotesField = $("#adminNotesField");
     refs.adminRole = $("#adminRole");
     refs.adminAccountType = $("#adminAccountType");
     refs.adminCrmNumber = $("#adminCrmNumber");
@@ -17745,6 +18038,14 @@ const startPcdDigital = () => {
 
     if (refs.createUserForm) {
       refs.createUserForm.addEventListener("submit", handleInlineAdminCreateUser);
+    }
+
+    if (refs.adminCreateTypeButtons && refs.adminCreateTypeButtons.length) {
+      refs.adminCreateTypeButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          syncInlineAdminCreateForm({ profile: button.dataset.adminCreateProfile || "" });
+        });
+      });
     }
 
     if (refs.adminPlanConfigForm) {
@@ -17788,6 +18089,7 @@ const startPcdDigital = () => {
     }
 
     syncAdminPlanCreateFormState();
+    syncInlineAdminCreateForm({ profile: getAdminCreateProfile(), preserveStatusNote: true });
     setAdminView(state.adminCurrentView || "overview");
   }
 
@@ -17806,6 +18108,10 @@ const startPcdDigital = () => {
       refs.adminViewPanels.forEach((panel) => {
         panel.classList.toggle("hidden", panel.dataset.adminViewPanel !== nextView);
       });
+    }
+
+    if (nextView === "create") {
+      syncInlineAdminCreateForm({ profile: getAdminCreateProfile(), preserveStatusNote: true });
     }
   }
 
@@ -17857,20 +18163,17 @@ const startPcdDigital = () => {
     const allPlans = normalizeClientPlanCatalog(catalog, { includeInactive: true });
     const activePlans = allPlans.filter((plan) => isActiveClientPlan(plan));
     const registerGrid = document.getElementById("registerPlanGrid");
-    const adminGrid = document.getElementById("adminPlanGrid");
     const publicGrid = document.getElementById("publicPlanGrid");
 
     if (registerGrid) {
       registerGrid.innerHTML = activePlans.map((plan) => buildPlanShowcaseCard(plan)).join("");
     }
 
-    if (adminGrid) {
-      adminGrid.innerHTML = allPlans.map((plan) => buildPlanShowcaseCard(plan)).join("");
-    }
-
     if (publicGrid) {
       publicGrid.innerHTML = activePlans.map((plan) => buildPlanShowcaseCard(plan)).join("");
     }
+
+    syncAdminCreatePlanShowcase(allPlans);
   }
 
   function populatePlanSelects() {
@@ -17878,10 +18181,7 @@ const startPcdDigital = () => {
     state.planCatalog = catalog;
 
     if (refs.adminPlan) {
-      refs.adminPlan.innerHTML = buildPlanOptionsHtml(refs.adminPlan.value || (catalog[0] ? catalog[0].id : ""), true);
-      if (!refs.adminPlan.value && catalog[0]) {
-        refs.adminPlan.value = catalog[0].id;
-      }
+      syncAdminCreatePlanOptions(refs.adminPlan.value || (catalog[0] ? catalog[0].id : ""));
     }
 
     renderPlanCatalogCards(catalog);
@@ -19860,34 +20160,65 @@ const startPcdDigital = () => {
     }
   }
 
+  function syncAllCidDescriptionFields(options = {}) {
+    Object.keys(CID_FIELD_DEFINITION_MAP).forEach((moduleKey) => {
+      syncCidDescriptionField(moduleKey, options);
+    });
+  }
+
+  function findCidModuleKeyByFieldId(fieldId) {
+    return Object.keys(CID_FIELD_DEFINITION_MAP).find((moduleKey) => {
+      const definition = getCidFieldDefinition(moduleKey);
+      return definition && (definition.codeId === fieldId || definition.descriptionId === fieldId);
+    }) || "";
+  }
+
   function bindCidDescriptionFields() {
     if (state.cidDescriptionBindingsApplied) {
       return;
     }
 
     state.cidDescriptionBindingsApplied = true;
-    Object.keys(CID_FIELD_DEFINITION_MAP).forEach((moduleKey) => {
+    document.addEventListener("input", (event) => {
+      const fieldId = event && event.target ? event.target.id : "";
+      const moduleKey = findCidModuleKeyByFieldId(fieldId);
+      if (!moduleKey) {
+        return;
+      }
+
       const definition = getCidFieldDefinition(moduleKey);
       if (!definition) {
         return;
       }
 
-      const codeField = document.getElementById(definition.codeId);
-      const descriptionField = document.getElementById(definition.descriptionId);
-      if (!codeField || !descriptionField) {
+      if (fieldId === definition.codeId) {
+        syncCidDescriptionField(moduleKey);
         return;
       }
 
-      codeField.addEventListener("input", () => syncCidDescriptionField(moduleKey));
-      codeField.addEventListener("change", () => syncCidDescriptionField(moduleKey, { normalizeCodeField: true }));
-      codeField.addEventListener("blur", () => syncCidDescriptionField(moduleKey, { normalizeCodeField: true }));
-      descriptionField.addEventListener("input", () => {
-        descriptionField.dataset.autoFilled = "false";
-        descriptionField.dataset.autoValue = "";
-      });
+      if (fieldId === definition.descriptionId) {
+        event.target.dataset.autoFilled = "false";
+        event.target.dataset.autoValue = "";
+      }
+    }, true);
 
-      syncCidDescriptionField(moduleKey, { normalizeCodeField: true });
-    });
+    const normalizeCidFromEvent = (event) => {
+      const fieldId = event && event.target ? event.target.id : "";
+      const moduleKey = findCidModuleKeyByFieldId(fieldId);
+      if (!moduleKey) {
+        return;
+      }
+
+      const definition = getCidFieldDefinition(moduleKey);
+      if (definition && fieldId === definition.codeId) {
+        syncCidDescriptionField(moduleKey, { normalizeCodeField: true });
+      }
+    };
+
+    document.addEventListener("change", normalizeCidFromEvent, true);
+    document.addEventListener("blur", normalizeCidFromEvent, true);
+
+    syncAllCidDescriptionFields({ normalizeCodeField: true });
   }
 
   function resolveReportRegistration(identity = {}) {

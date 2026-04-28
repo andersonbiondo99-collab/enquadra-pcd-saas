@@ -552,40 +552,69 @@
             <div class="section-head">
               <div>
                 <span class="section-step">Novo acesso</span>
-                <h3>Cadastrar cliente</h3>
+                <h3 id="adminCreateSectionTitle">Escolher perfil de cadastro</h3>
               </div>
               <span class="section-chip">Liberação comercial</span>
             </div>
 
-            <div class="plan-grid compact" id="adminPlanGrid"></div>
+            <div class="plan-grid compact hidden" id="adminPlanGrid"></div>
 
             <form class="field-grid three-columns" id="createUserForm" novalidate>
-              <label class="field">
+              <div class="admin-create-type-shell field-full" id="adminCreateTypeShell">
+                <input type="hidden" id="adminCreateProfile" value="">
+                <span class="section-step">Passo 1</span>
+                <h4>Qual perfil você quer cadastrar?</h4>
+                <p id="adminCreateTypeSummary">Escolha primeiro o tipo de cadastro para abrir apenas os campos necessários.</p>
+                <div class="admin-create-type-grid">
+                  <button class="choice-card admin-create-type-card" type="button" data-admin-create-profile="admin">
+                    <strong>Administrador</strong>
+                    <span>Acesso interno da plataforma com menos campos e sem etapa comercial.</span>
+                  </button>
+                  <button class="choice-card admin-create-type-card" type="button" data-admin-create-profile="company">
+                    <strong>Empresa</strong>
+                    <span>Conta cliente com status comercial, plano e controle administrativo.</span>
+                  </button>
+                  <button class="choice-card admin-create-type-card" type="button" data-admin-create-profile="doctor">
+                    <strong>Médico</strong>
+                    <span>Cadastro profissional com CRM, validação e plano médico adequado.</span>
+                  </button>
+                </div>
+              </div>
+
+              <div class="admin-create-form-shell field-full hidden" id="adminCreateDetails">
+                <div class="admin-create-fieldset-caption">
+                  <span class="section-step">Passo 2</span>
+                  <strong id="adminCreateFieldsTitle">Dados do cadastro</strong>
+                  <p id="adminCreateFieldsSummary">Preencha os dados principais do perfil selecionado.</p>
+                </div>
+
+                <div class="field-grid three-columns admin-create-fields-grid">
+              <label class="field" id="adminCompanyField">
                 <span>Empresa</span>
                 <input type="text" id="adminCompany" placeholder="Empresa cliente">
               </label>
 
-              <label class="field">
+              <label class="field" id="adminContactNameField">
                 <span>Responsável</span>
                 <input type="text" id="adminContactName" placeholder="Contato da conta">
               </label>
 
-              <label class="field">
+              <label class="field" id="adminEmailField">
                 <span>E-mail</span>
                 <input type="email" id="adminEmail" placeholder="financeiro@empresa.com.br">
               </label>
 
-              <label class="field">
+              <label class="field" id="adminUsernameField">
                 <span>Usu&aacute;rio</span>
                 <input type="text" id="adminUsername" placeholder="Login do cliente">
               </label>
 
-              <label class="field">
+              <label class="field" id="adminPasswordField">
                 <span>Senha inicial</span>
                 <input type="password" id="adminPassword" placeholder="Senha provisória">
               </label>
 
-              <label class="field">
+              <label class="field hidden" id="adminRoleField">
                 <span>Perfil</span>
                 <select id="adminRole">
                   <option value="buyer">Empresa</option>
@@ -593,7 +622,7 @@
                 </select>
               </label>
 
-              <label class="field">
+              <label class="field hidden" id="adminAccountTypeField">
                 <span>Tipo de cadastro</span>
                 <select id="adminAccountType">
                   <option value="company">Empresa</option>
@@ -601,12 +630,12 @@
                 </select>
               </label>
 
-              <label class="field">
+              <label class="field" id="adminCrmNumberField">
                 <span>CRM</span>
                 <input type="text" id="adminCrmNumber" inputmode="numeric" placeholder="N&uacute;mero do CRM">
               </label>
 
-              <label class="field">
+              <label class="field" id="adminCrmStateField">
                 <span>UF do CRM</span>
                 <select id="adminCrmState">
                   <option value="">Selecione</option>
@@ -640,7 +669,7 @@
                 </select>
               </label>
 
-              <label class="field">
+              <label class="field" id="adminCrmValidatedField">
                 <span>Valida&ccedil;&atilde;o do CRM</span>
                 <select id="adminCrmValidated">
                   <option value="false">Pendente</option>
@@ -648,7 +677,7 @@
                 </select>
               </label>
 
-              <label class="field">
+              <label class="field" id="adminStatusField">
                 <span>Status</span>
                 <select id="adminStatus">
                   <option value="active">Ativo</option>
@@ -657,7 +686,7 @@
                 </select>
               </label>
 
-              <label class="field">
+              <label class="field" id="adminPaymentStatusField">
                 <span>Status do pagamento</span>
                 <select id="adminPaymentStatus">
                   <option value="pending">Pendente</option>
@@ -668,23 +697,25 @@
                 </select>
               </label>
 
-              <label class="field">
+              <label class="field" id="adminPlanField">
                 <span>Plano / pacote de laudos</span>
                 <select id="adminPlan"></select>
               </label>
 
-              <label class="field">
+              <label class="field" id="adminPaymentDueAtField">
                 <span>Vencimento do plano</span>
                 <input type="date" id="adminPaymentDueAt">
               </label>
 
-              <label class="field field-full">
+              <label class="field field-full" id="adminNotesField">
                 <span>Observações internas</span>
                 <textarea id="adminNotes" rows="3" placeholder="Controle interno, financeiro ou observações comerciais"></textarea>
               </label>
 
               <div class="form-actions field-full">
                 <button class="primary-button" type="submit">Criar acesso</button>
+              </div>
+                </div>
               </div>
             </form>
 
@@ -1446,7 +1477,7 @@
 
                     <label class="field" id="physicalCidField">
                       <span>CID informado</span>
-                      <input type="text" id="physicalCid" placeholder="Ex.: S68.1">
+                      <input type="text" id="physicalCid" placeholder="Ex.: S68.0">
                     </label>
                     <label class="field" id="physicalCidDescriptionField">
                       <span>Descri&ccedil;&atilde;o do CID</span>
