@@ -763,6 +763,22 @@ const startPcdDigital = () => {
     return normalizeSpacing(String(value || "")).toLowerCase();
   }
 
+  function waitForApiRetry(delayMs) {
+    return new Promise((resolve) => {
+      window.setTimeout(resolve, delayMs);
+    });
+  }
+
+  function isRetryableApiMethod(method) {
+    const normalizedMethod = String(method || "GET").trim().toUpperCase();
+    return normalizedMethod === "GET" || normalizedMethod === "HEAD";
+  }
+
+  function isRetryableApiRequest(url, method) {
+    const normalizedUrl = String(url || "");
+    return isRetryableApiMethod(method) || normalizedUrl === AUTH_API.login;
+  }
+
   async function apiJson(url, options = {}) {
     const sessionToken = getApiSessionToken();
     const requestUrl = buildApiUrl(url);
@@ -780,15 +796,37 @@ const startPcdDigital = () => {
       config.body = JSON.stringify(options.body);
     }
 
+    const maxAttempts = isRetryableApiRequest(url, config.method) ? 3 : 1;
     let response;
-    try {
-      response = await fetch(requestUrl, config);
-    } catch (error) {
-      const isDirectFileAccess = window.location.protocol === "file:";
-      throw new Error(isDirectFileAccess
-        ? `Nao foi possivel conectar ao servidor. Abra o sistema por ${getPreferredAppOrigin()} ou pela hospedagem publicada.`
-        : `Nao foi possivel conectar ao servidor neste momento. Verifique se o backend esta online em ${getPreferredAppOrigin()}.`);
+    let lastNetworkError = null;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      try {
+        response = await fetch(requestUrl, config);
+      } catch (error) {
+        lastNetworkError = error;
+        if (attempt < maxAttempts) {
+          await waitForApiRetry(450 * attempt);
+          continue;
+        }
+        const isDirectFileAccess = window.location.protocol === "file:";
+        throw new Error(isDirectFileAccess
+          ? `Nao foi possivel conectar ao servidor. Abra o sistema por ${getPreferredAppOrigin()} ou pela hospedagem publicada.`
+          : `Nao foi possivel conectar ao servidor neste momento. Verifique se o backend esta online em ${getPreferredAppOrigin()}.`);
+      }
+
+      if (response && [502, 503, 504].includes(response.status) && attempt < maxAttempts) {
+        await waitForApiRetry(450 * attempt);
+        continue;
+      }
+
+      break;
     }
+
+    if (!response) {
+      throw lastNetworkError || new Error("Nao foi possivel obter resposta do servidor.");
+    }
+
     let payload = {};
     try {
       payload = await response.json();
@@ -805,7 +843,7 @@ const startPcdDigital = () => {
           : "A rota da API nao foi encontrada neste ambiente. Verifique se o backend publicado esta usando a versao correta.");
       }
       if ((response.status === 502 || response.status === 503 || response.status === 504) && isApiRoute) {
-        throw new Error("O frontend encontrou a API, mas o backend nao respondeu corretamente. Verifique se o servidor publicado esta online e saudavel.");
+        throw new Error("O servidor publicado respondeu com instabilidade temporaria. Aguarde alguns segundos e tente novamente.");
       }
       if (response.status === 401 && isApiRoute) {
         clearApiSessionToken();

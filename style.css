@@ -4011,24 +4011,24 @@ body{
 }
 
 .auth-shell{
-  max-width:1260px;
-  padding:24px 22px 40px;
-  gap:20px;
+  max-width:1140px;
+  padding:20px 20px 34px;
+  gap:16px;
 }
 
 .auth-hero{
-  padding:20px;
-  gap:20px;
+  padding:16px;
+  gap:16px;
 }
 
 .auth-brand{
   align-items:center;
-  padding:14px 16px;
+  padding:12px 14px;
   border:1px solid rgba(17, 70, 103, 0.10);
-  border-radius:20px;
+  border-radius:18px;
   background:rgba(246, 249, 252, 0.78);
   backdrop-filter:blur(14px);
-  box-shadow:0 14px 30px rgba(12, 31, 46, 0.08);
+  box-shadow:0 10px 22px rgba(12, 31, 46, 0.07);
 }
 
 .auth-brand-lockup{
@@ -4049,9 +4049,11 @@ body{
 }
 
 .sales-hero{
-  grid-template-columns:minmax(0, 0.94fr) minmax(360px, 1fr);
+  max-width:1020px;
+  margin:0 auto;
+  grid-template-columns:minmax(0, 1fr) minmax(280px, 340px);
   align-items:start;
-  gap:22px;
+  gap:16px;
 }
 
 .sales-hero-copy{
@@ -4060,10 +4062,10 @@ body{
   display:flex;
   flex-direction:column;
   justify-content:center;
-  padding:clamp(24px, 2.5vw, 34px);
-  border-radius:24px;
+  padding:20px 20px 18px;
+  border-radius:20px;
   background:linear-gradient(148deg, rgba(14, 40, 58, 0.95), rgba(18, 78, 108, 0.92));
-  box-shadow:0 20px 40px rgba(9, 25, 38, 0.16);
+  box-shadow:0 14px 28px rgba(9, 25, 38, 0.12);
   color:#f5fbff;
 }
 
@@ -4093,18 +4095,18 @@ body{
 
 .sales-hero-copy h3{
   margin:14px 0 12px;
-  max-width:12.2ch;
-  font-size:clamp(1.62rem, 2.2vw, 2.34rem);
-  line-height:1.1;
+  max-width:16ch;
+  font-size:clamp(1.36rem, 1.7vw, 1.95rem);
+  line-height:1.12;
   letter-spacing:-0.05em;
   font-weight:700;
   color:#ffffff;
 }
 
 .sales-hero-copy p{
-  max-width:42ch;
-  font-size:0.96rem;
-  line-height:1.62;
+  max-width:46ch;
+  font-size:0.91rem;
+  line-height:1.54;
   color:rgba(237, 247, 252, 0.88);
   font-weight:400;
 }
@@ -4118,11 +4120,13 @@ body{
   min-width:0;
   min-height:auto;
   align-self:start;
-  padding:12px;
-  border-radius:26px;
+  justify-self:end;
+  width:min(100%, 340px);
+  padding:8px;
+  border-radius:20px;
   border:1px solid rgba(17, 70, 103, 0.10);
   background:linear-gradient(180deg, rgba(214, 226, 236, 0.90), rgba(196, 214, 226, 0.84));
-  box-shadow:0 16px 32px rgba(16, 45, 63, 0.08);
+  box-shadow:0 10px 22px rgba(16, 45, 63, 0.07);
 }
 
 .sales-hero-panel::after{
@@ -4133,14 +4137,14 @@ body{
   display:flex;
   flex-direction:column;
   width:100%;
-  min-height:280px;
-  padding:28px 28px 24px;
-  border-radius:22px;
+  min-height:210px;
+  padding:20px 20px 18px;
+  border-radius:18px;
   border:1px solid rgba(17, 70, 103, 0.12);
   background:
     radial-gradient(circle at top right, rgba(10, 91, 134, 0.14), transparent 26%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(236, 243, 248, 0.96));
-  box-shadow:0 14px 28px rgba(15, 40, 58, 0.07);
+  box-shadow:0 8px 18px rgba(15, 40, 58, 0.06);
   transition:opacity 0.22s ease, transform 0.22s ease, filter 0.22s ease, box-shadow 0.22s ease;
 }
 
@@ -4152,26 +4156,26 @@ body{
 
 .hero-insight-title{
   display:block;
-  margin-top:10px;
-  max-width:15ch;
-  font-size:1.28rem;
-  line-height:1.24;
+  margin-top:8px;
+  max-width:17ch;
+  font-size:1.08rem;
+  line-height:1.22;
   letter-spacing:-0.02em;
   color:#173247;
   font-weight:700;
 }
 
 .hero-insight-text{
-  margin-top:10px;
-  max-width:32ch;
-  font-size:0.96rem;
+  margin-top:8px;
+  max-width:30ch;
+  font-size:0.88rem;
   color:#556a7a;
-  line-height:1.64;
+  line-height:1.5;
 }
 
 .hero-insight-dots{
   margin-top:auto;
-  padding-top:18px;
+  padding-top:12px;
 }
 
 .primary-button,
@@ -4386,36 +4390,40 @@ body{
 }
 
 .sales-hero{
-  grid-template-columns:minmax(0, 0.9fr) minmax(360px, 1fr);
-  gap:22px;
+  grid-template-columns:minmax(0, 1fr) minmax(280px, 340px);
+  gap:16px;
 }
 
 .sales-hero-copy{
-  padding:clamp(24px, 2.4vw, 34px);
+  padding:20px 20px 18px;
 }
 
 .sales-hero-copy h3{
-  max-width:12ch;
-  font-size:clamp(1.62rem, 2.15vw, 2.3rem);
-  line-height:1.08;
+  max-width:16ch;
+  font-size:clamp(1.36rem, 1.7vw, 1.95rem);
+  line-height:1.12;
 }
 
 .sales-hero-copy p{
-  max-width:42ch;
+  max-width:46ch;
+  font-size:0.91rem;
+  line-height:1.54;
 }
 
 .hero-insight-visual{
-  padding:30px 30px 24px;
+  min-height:210px;
+  padding:20px 20px 18px;
 }
 
 .hero-insight-title{
-  max-width:15ch;
-  font-size:1.3rem;
+  max-width:17ch;
+  font-size:1.08rem;
 }
 
 .hero-insight-text{
-  max-width:32ch;
-  line-height:1.66;
+  max-width:30ch;
+  font-size:0.88rem;
+  line-height:1.5;
 }
 
 .payment-assurance{
@@ -4552,16 +4560,18 @@ body{
 
   .sales-hero-copy h3{
     max-width:none;
-    font-size:clamp(1.7rem, 7vw, 2.25rem);
+    font-size:clamp(1.42rem, 6vw, 1.92rem);
   }
 
   .sales-hero-panel{
-    padding:10px;
+    width:100%;
+    justify-self:stretch;
+    padding:8px;
   }
 
   .hero-insight-visual{
     min-height:0;
-    padding:24px 22px;
+    padding:18px 18px 16px;
   }
 
   .payment-assurance{
