@@ -4364,6 +4364,11 @@ body{
   color:#22485f;
 }
 
+.status-note-action{
+  margin-top:10px;
+  align-self:flex-start;
+}
+
 .sales-hero{
   grid-template-columns:minmax(0, 0.86fr) minmax(420px, 1.14fr);
   gap:30px;

@@ -207,6 +207,41 @@ const server = http.createServer(async (req, res) => {
       const doctorAccepted = Boolean(body.doctorAccepted);
       const plan = getPlanById(body.planId, { includeInactive: false, fallbackToFirst: false });
       const users = readUsers();
+      const reusableSignupUser = findReusableSignupUser(users, {
+        email,
+        username,
+        password,
+        accountType
+      });
+      if (reusableSignupUser) {
+        let resumeInfo = {
+          user: reusableSignupUser,
+          plan: getPlanById(reusableSignupUser.planId || "mensal", { includeInactive: true }),
+          checkout: buildStoredCheckoutSnapshot(reusableSignupUser)
+        };
+        if (MP_ACCESS_TOKEN) {
+          try {
+            resumeInfo = await ensureCheckoutForBlockedAccess({
+              user: reusableSignupUser,
+              req,
+              source: "signup_resume"
+            });
+          } catch (error) {
+            console.error(error);
+          }
+        }
+
+        const resumedUser = resumeInfo.user || reusableSignupUser;
+        const resumedPlan = resumeInfo.plan || getPlanById(resumedUser.planId || "mensal", { includeInactive: true });
+        return sendJson(res, 200, {
+          message: buildCheckoutResumeMessage(reusableSignupUser, resumeInfo),
+          user: serializeUser(resumedUser),
+          plan: resumedPlan,
+          mercadopagoConfigured: Boolean(MP_ACCESS_TOKEN),
+          checkout: resumeInfo.checkout || buildStoredCheckoutSnapshot(resumedUser),
+          resumed: true
+        });
+      }
       const validationError = validatePublicRegistration({
         company,
         companyCnpj,
@@ -339,7 +374,30 @@ const server = http.createServer(async (req, res) => {
 
       const accessError = getAccessError(user);
       if (accessError) {
-        return sendJson(res, 403, { message: accessError });
+        let blockedUser = user;
+        let checkout = buildStoredCheckoutSnapshot(user);
+        let message = accessError;
+
+        if (MP_ACCESS_TOKEN && isCheckoutResumeEligible(user)) {
+          try {
+            const resumeInfo = await ensureCheckoutForBlockedAccess({
+              user,
+              req,
+              source: "login_resume"
+            });
+            blockedUser = resumeInfo.user || user;
+            checkout = resumeInfo.checkout || checkout;
+            message = buildCheckoutResumeMessage(user, resumeInfo);
+          } catch (error) {
+            console.error(error);
+          }
+        }
+
+        return sendJson(res, 403, {
+          message,
+          user: serializeUser(blockedUser),
+          checkout
+        });
       }
 
       const sessionToken = createSession(req, res, user.id);
@@ -2309,6 +2367,170 @@ function getSubscriptionRenewalBlocker(user, plan) {
   return "";
 }
 
+function isCheckoutResumeEligible(user) {
+  if (!user || user.role !== "buyer") {
+    return false;
+  }
+  return ["pending", "rejected", "cancelled", "expired"].includes(normalizePaymentStatus(user.paymentStatus));
+}
+
+function buildStoredCheckoutSnapshot(user) {
+  if (!user) {
+    return null;
+  }
+  const checkoutUrl = normalizeText(user.mpCheckoutUrl);
+  if (!checkoutUrl) {
+    return null;
+  }
+  return {
+    type: normalizePlanBillingModel(user.planBillingModel),
+    checkoutUrl,
+    sandboxCheckoutUrl: "",
+    preferenceId: user.mpPreferenceId || "",
+    subscriptionId: user.mpSubscriptionId || "",
+    subscriptionStatus: user.mpSubscriptionStatus || ""
+  };
+}
+
+function buildCheckoutResumeMessage(user, resumeInfo = {}) {
+  const originalStatus = normalizePaymentStatus(user && user.paymentStatus);
+  const hasCheckoutUrl = Boolean(
+    resumeInfo
+    && resumeInfo.checkout
+    && normalizeText(resumeInfo.checkout.checkoutUrl || resumeInfo.checkout.sandboxCheckoutUrl)
+  );
+  const checkoutWasCreated = Boolean(resumeInfo && resumeInfo.created);
+
+  if (originalStatus === "pending") {
+    if (hasCheckoutUrl && checkoutWasCreated) {
+      return "Identificamos um cadastro pendente e reabrimos o checkout do Mercado Pago para concluir a libera\u00e7\u00e3o.";
+    }
+    if (hasCheckoutUrl) {
+      return "Identificamos um cadastro pendente. Retome o checkout do Mercado Pago para concluir a libera\u00e7\u00e3o.";
+    }
+    return "Seu cadastro est\u00e1 pendente de pagamento. Fa\u00e7a login para acompanhar a libera\u00e7\u00e3o comercial.";
+  }
+
+  if (originalStatus === "rejected" || originalStatus === "cancelled") {
+    return hasCheckoutUrl
+      ? "Seu cadastro j\u00e1 existe, mas o pagamento n\u00e3o foi aprovado. Preparamos um novo checkout para retomar a contrata\u00e7\u00e3o."
+      : "Seu cadastro j\u00e1 existe, mas o pagamento n\u00e3o foi aprovado. Solicite um novo link comercial para retomar a contrata\u00e7\u00e3o.";
+  }
+
+  if (originalStatus === "expired") {
+    return hasCheckoutUrl
+      ? "Seu acesso comercial est\u00e1 vencido. Preparamos um checkout para reativar a conta."
+      : "Seu acesso comercial est\u00e1 vencido. Gere uma nova contrata\u00e7\u00e3o para reativar a conta.";
+  }
+
+  return "Seu cadastro j\u00e1 existe. Fa\u00e7a login para acompanhar a contrata\u00e7\u00e3o.";
+}
+
+async function ensureCheckoutForBlockedAccess({ user, req, source = "checkout_resume" }) {
+  const plan = getPlanById(user && user.planId ? user.planId : "mensal", { includeInactive: true });
+  const originalStatus = normalizePaymentStatus(user && user.paymentStatus);
+  const storedCheckout = buildStoredCheckoutSnapshot(user);
+  if (!user || !plan || !MP_ACCESS_TOKEN || !isCheckoutResumeEligible(user)) {
+    return {
+      user,
+      plan,
+      checkout: storedCheckout,
+      created: false
+    };
+  }
+
+  if (originalStatus === "pending" && storedCheckout) {
+    return {
+      user,
+      plan,
+      checkout: storedCheckout,
+      created: false
+    };
+  }
+
+  const reusableSubscriptionError = getSubscriptionRenewalBlocker(user, plan);
+  if (reusableSubscriptionError && storedCheckout) {
+    return {
+      user,
+      plan,
+      checkout: storedCheckout,
+      created: false,
+      message: reusableSubscriptionError
+    };
+  }
+  if (reusableSubscriptionError) {
+    throw new Error(reusableSubscriptionError);
+  }
+
+  const purpose = originalStatus === "pending" ? "signup" : "renewal";
+  const checkout = await createBillingCheckout({ user, plan, req, purpose });
+  const checkoutUrl = checkout.checkoutUrl || checkout.sandboxCheckoutUrl || "";
+  const now = new Date().toISOString();
+  const updatedUser = updateUserRecord(user.id, (current) => appendPaymentHistory({
+    ...current,
+    mpPreferenceId: checkout.preferenceId || "",
+    mpCheckoutUrl: checkoutUrl,
+    mpSubscriptionId: checkout.subscriptionId || current.mpSubscriptionId || "",
+    mpSubscriptionStatus: checkout.subscriptionStatus || current.mpSubscriptionStatus || "",
+    paymentProvider: "mercadopago",
+    paymentStatus: current.paymentStatus === "approved" ? "approved" : "pending",
+    renewalOfferedAt: purpose === "renewal" ? now : current.renewalOfferedAt,
+    lastPaymentAttemptAt: now,
+    updatedAt: now
+  }, {
+    title: normalizePlanBillingModel(plan.billingModel) === "subscription"
+      ? (purpose === "signup" ? "Assinatura retomada" : "Assinatura de reativacao preparada")
+      : (purpose === "signup" ? "Checkout pendente reaberto" : "Checkout de reativacao gerado"),
+    details: purpose === "signup"
+      ? `A conta ${current.company} retomou o fluxo comercial do plano ${plan.label}.`
+      : `Um novo checkout foi preparado para retomar o plano ${plan.label}.`,
+    status: "pending",
+    provider: "mercadopago",
+    source,
+    referenceId: checkout.subscriptionId || checkout.preferenceId || "",
+    amountCents: Number(plan.priceCents || 0),
+    dedupKey: `${source}:${user.id}:${checkout.subscriptionId || checkout.preferenceId || `${plan.id}:${purpose}`}`
+  }));
+
+  return {
+    user: updatedUser,
+    plan,
+    checkout: {
+      ...checkout,
+      checkoutUrl
+    },
+    created: true
+  };
+}
+
+function findReusableSignupUser(users, payload = {}) {
+  const email = normalizeEmail(payload.email);
+  const usernameKey = normalizeUserIdentifier(payload.username);
+  const accountType = normalizeAccountType(payload.accountType);
+
+  return (Array.isArray(users) ? users : []).find((item) => {
+    if (!item || item.role !== "buyer") {
+      return false;
+    }
+
+    const sameUsername = item.usernameKey === usernameKey;
+    const sameEmail = email && normalizeEmail(item.email) === email;
+    if (!sameUsername && !sameEmail) {
+      return false;
+    }
+
+    if (!isCheckoutResumeEligible(item)) {
+      return false;
+    }
+
+    if (accountType && normalizeAccountType(item.accountType) !== accountType) {
+      return false;
+    }
+
+    return verifyPassword(payload.password, item);
+  }) || null;
+}
+
 function validateAndBuildAdminPlanPayload(body, options = {}) {
   const isCreate = Boolean(options.isCreate);
   const audienceKey = normalizePlanAudienceKey(body.audienceKey || body.audience);
@@ -2476,23 +2698,23 @@ function validatePublicRegistration(payload, users) {
   }
   if (payload.accountType === "doctor") {
     if (!payload.crmNumber || String(payload.crmNumber).length < 4 || !payload.crmState) {
-      return "Informe CRM e UF validos para solicitar o plano medico.";
+    return "Informe CRM e UF válidos para solicitar o plano médico.";
     }
     if (!payload.doctorCpf || String(payload.doctorCpf).length !== 11) {
-      return "Informe o CPF completo do medico para concluir o cadastro.";
+    return "Informe o CPF completo do médico para concluir o cadastro.";
     }
     if (!payload.doctorBirthDate) {
-      return "Informe a data de nascimento do medico para concluir o cadastro.";
+    return "Informe a data de nascimento do médico para concluir o cadastro.";
     }
     if (!payload.doctorAccepted) {
-      return "Confirme a responsabilidade tecnica medica para prosseguir.";
+    return "Confirme a responsabilidade técnica médica para prosseguir.";
     }
   }
   if (users.some((item) => item.usernameKey === normalizeUserIdentifier(payload.username))) {
-    return "Ja existe um acesso com esse usuario.";
+    return "Já existe um acesso com esse usuário.";
   }
   if (users.some((item) => normalizeEmail(item.email) && normalizeEmail(item.email) === payload.email)) {
-    return "Ja existe uma conta vinculada a este e-mail.";
+    return "Já existe uma conta vinculada a este e-mail.";
   }
   return "";
 }
@@ -2649,7 +2871,7 @@ function serializeUser(user) {
 
 function getAccessError(user) {
   if (!user) {
-    return "Conta nao localizada.";
+    return "Conta não localizada.";
   }
   if (user.role === "admin") {
     return user.status === "active" ? "" : "Acesso administrativo bloqueado.";
@@ -2658,16 +2880,16 @@ function getAccessError(user) {
     return "Acesso bloqueado. Contate o administrador da plataforma.";
   }
   if (user.paymentStatus === "pending") {
-    return "Pagamento ainda nao aprovado. Finalize o plano para liberar o acesso.";
+    return "Pagamento ainda não aprovado. Finalize o plano para liberar o acesso.";
   }
   if (user.paymentStatus === "rejected" || user.paymentStatus === "cancelled") {
-    return "Pagamento nao aprovado. Gere um novo link de pagamento ou contate o administrador.";
+    return "Pagamento não aprovado. Gere um novo link de pagamento ou contate o administrador.";
   }
   if (user.paymentStatus === "expired" || user.status === "inadimplente") {
-    return "Acesso indisponivel por inadimplencia ou vencimento do plano.";
+    return "Acesso indisponível por inadimplência ou vencimento do plano.";
   }
   if (user.paymentStatus !== "approved") {
-    return "Acesso indisponivel ate a confirmacao do pagamento.";
+    return "Acesso indisponível até a confirmação do pagamento.";
   }
   return "";
 }

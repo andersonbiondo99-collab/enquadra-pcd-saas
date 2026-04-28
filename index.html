@@ -421,6 +421,7 @@
       </form>
 
       <p class="status-note" id="authStatus"></p>
+      <a class="ghost-button status-note-action hidden" id="authStatusAction" href="#" target="_blank" rel="noopener">Retomar pagamento</a>
     </section>
   </div>
 
@@ -461,7 +462,7 @@
           <button class="admin-nav-button is-active" type="button" data-admin-view="overview">Visão geral</button>
           <button class="admin-nav-button" type="button" data-admin-view="users">Ver usuários</button>
           <button class="admin-nav-button" type="button" data-admin-view="create">Novo cadastro</button>
-          <button class="admin-nav-button" type="button" data-admin-view="pricing">ConfiguraÃ§Ãµes de plano</button>
+          <button class="admin-nav-button" type="button" data-admin-view="pricing">Configura&ccedil;&otilde;es de plano</button>
         </div>
 
         <section class="admin-view" data-admin-view-panel="overview">
@@ -707,35 +708,35 @@
           <section class="admin-inline-card">
             <div class="section-head">
               <div>
-                <span class="section-step">ConfiguraÃ§Ãµes de plano</span>
+              <span class="section-step">Configura&ccedil;&otilde;es de plano</span>
                 <h3>Criar e ajustar planos comerciais</h3>
               </div>
               <span class="section-chip">Mercado Pago interligado</span>
             </div>
 
-            <p class="admin-inline-copy">Altere valores, vigÃªncia, franquia de laudos e modelo de cobranÃ§a. Planos recorrentes passam a usar assinatura mensal no Mercado Pago; planos avulsos seguem pelo checkout tradicional.</p>
+              <p class="admin-inline-copy">Altere valores, vig&ecirc;ncia, franquia de laudos e modelo de cobran&ccedil;a. Planos recorrentes passam a usar assinatura mensal no Mercado Pago; planos avulsos seguem pelo checkout tradicional.</p>
 
             <form class="field-grid three-columns" id="adminPlanConfigForm" novalidate>
               <label class="field">
                 <span>Nome do plano</span>
-                <input type="text" id="adminPlanConfigName" placeholder="Ex.: MÃ©dico Recorrente 30 Laudos">
+                  <input type="text" id="adminPlanConfigName" placeholder="Ex.: M&eacute;dico Recorrente 30 Laudos">
               </label>
 
               <label class="field">
-                <span>CÃ³digo interno (opcional)</span>
+                  <span>C&oacute;digo interno (opcional)</span>
                 <input type="text" id="adminPlanConfigCode" placeholder="Ex.: individual_recorrente_30">
               </label>
 
               <label class="field">
-                <span>PÃºblico</span>
+                  <span>P&uacute;blico</span>
                 <select id="adminPlanConfigAudience">
-                  <option value="doctor">MÃ©dico</option>
+                    <option value="doctor">M&eacute;dico</option>
                   <option value="company">Empresa</option>
                 </select>
               </label>
 
               <label class="field">
-                <span>Modelo de cobranÃ§a</span>
+                  <span>Modelo de cobran&ccedil;a</span>
                 <select id="adminPlanConfigBillingModel">
                   <option value="one_time">Pagamento avulso</option>
                   <option value="subscription">Assinatura recorrente mensal</option>
@@ -748,7 +749,7 @@
               </label>
 
               <label class="field">
-                <span>VigÃªncia / ciclo (meses)</span>
+                  <span>Vig&ecirc;ncia / ciclo (meses)</span>
                 <input type="number" id="adminPlanConfigMonths" min="1" step="1" value="1">
               </label>
 
@@ -775,8 +776,8 @@
               </label>
 
               <label class="field field-full">
-                <span>DescriÃ§Ã£o comercial</span>
-                <textarea id="adminPlanConfigDescription" rows="3" placeholder="Explique rapidamente o que o plano entrega e como a cobranÃ§a funciona."></textarea>
+                  <span>Descri&ccedil;&atilde;o comercial</span>
+                  <textarea id="adminPlanConfigDescription" rows="3" placeholder="Explique rapidamente o que o plano entrega e como a cobran&ccedil;a funciona."></textarea>
               </label>
 
               <div class="form-actions field-full">
@@ -791,7 +792,7 @@
             <div class="section-head">
               <div>
                 <span class="section-step">Carteira comercial</span>
-                <h3>Planos ativos e histÃ³rico configurado</h3>
+              <h3>Planos ativos e hist&oacute;rico configurado</h3>
               </div>
               <span class="section-chip" id="adminPlansCount">0 planos</span>
             </div>
@@ -1232,7 +1233,7 @@
                     <span class="section-chip">Obrigatório considerar impacto funcional</span>
                   </div>
 
-                  <div class="field-grid two-columns">
+                  <div class="field-grid three-columns">
                     <label class="field">
                       <span>Upload da audiometria</span>
                       <input type="file" id="audioFile" accept=".csv,.txt,.json,.pdf,.png,.jpg,.jpeg">
@@ -1296,7 +1297,7 @@
                     <p>É o prejuízo prático para compreender fala, localizar alertas sonoros, comunicar-se em ambiente ruidoso e participar do trabalho em igualdade de condições.</p>
                   </div>
 
-                  <div class="field-grid two-columns">
+                  <div class="field-grid three-columns">
                     <label class="field">
                       <span>Grau de impacto funcional auditivo</span>
                       <select id="audioImpactGrade">
@@ -1311,6 +1312,10 @@
                     <label class="field">
                       <span>CID informado</span>
                       <input type="text" id="audioCid" placeholder="Ex.: H90.3">
+                    </label>
+                    <label class="field">
+                      <span>Descri&ccedil;&atilde;o do CID</span>
+                      <input type="text" id="audioCidDescription" placeholder="Ex.: Perda auditiva neurossensorial bilateral">
                     </label>
                   </div>
 
@@ -1442,6 +1447,10 @@
                     <label class="field" id="physicalCidField">
                       <span>CID informado</span>
                       <input type="text" id="physicalCid" placeholder="Ex.: S68.1">
+                    </label>
+                    <label class="field" id="physicalCidDescriptionField">
+                      <span>Descri&ccedil;&atilde;o do CID</span>
+                      <input type="text" id="physicalCidDescription" placeholder="Ex.: Amputa&ccedil;&atilde;o traum&aacute;tica do polegar">
                     </label>
                   </div>
 
@@ -1703,6 +1712,10 @@
                       <span>CID informado</span>
                       <input type="text" id="clinicalCid" placeholder="Ex.: M79.7">
                     </label>
+                    <label class="field">
+                      <span>Descri&ccedil;&atilde;o do CID</span>
+                      <input type="text" id="clinicalCidDescription" placeholder="Ex.: Fibromialgia">
+                    </label>
 
                     <label class="field">
                       <span>Possui laudo médico?</span>
@@ -1836,6 +1849,10 @@
                     <label class="field">
                       <span>CID informado</span>
                       <input type="text" id="visualCid" placeholder="Ex.: H54.0">
+                    </label>
+                    <label class="field">
+                      <span>Descri&ccedil;&atilde;o do CID</span>
+                      <input type="text" id="visualCidDescription" placeholder="Ex.: Cegueira monocular">
                     </label>
 
                     <label class="field">
@@ -1973,6 +1990,10 @@
                       <span>CID informado</span>
                       <input type="text" id="intellectualCid" placeholder="Ex.: F79">
                     </label>
+                    <label class="field">
+                      <span>Descri&ccedil;&atilde;o do CID</span>
+                      <input type="text" id="intellectualCidDescription" placeholder="Ex.: Defici&ecirc;ncia intelectual n&atilde;o especificada">
+                    </label>
                   </div>
 
                   <div class="field-group">
@@ -2061,6 +2082,10 @@
                     <label class="field">
                       <span>CID informado</span>
                       <input type="text" id="psychosocialCid" placeholder="Ex.: F33.2">
+                    </label>
+                    <label class="field">
+                      <span>Descri&ccedil;&atilde;o do CID</span>
+                      <input type="text" id="psychosocialCidDescription" placeholder="Ex.: Transtorno depressivo recorrente">
                     </label>
                   </div>
 

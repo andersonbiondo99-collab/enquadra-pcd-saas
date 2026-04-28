@@ -275,6 +275,7 @@ const startPcdDigital = () => {
     authTitle: $("#authTitle"),
     authDescription: $("#authDescription"),
     authStatus: $("#authStatus"),
+    authStatusAction: $("#authStatusAction"),
     loginForm: $("#loginForm"),
     loginUsername: $("#loginUsername"),
     loginPassword: $("#loginPassword"),
@@ -809,7 +810,10 @@ const startPcdDigital = () => {
       if (response.status === 401 && isApiRoute) {
         clearApiSessionToken();
       }
-      throw new Error(payload && payload.message ? payload.message : "Falha na comunicacao com o servidor.");
+      const apiError = new Error(payload && payload.message ? payload.message : "Falha na comunicação com o servidor.");
+      apiError.payload = payload;
+      apiError.status = response.status;
+      throw apiError;
     }
 
     return payload;
@@ -4209,20 +4213,20 @@ const startPcdDigital = () => {
     const effectiveDueAt = companyController ? companyController.paymentDueAt : user.paymentDueAt;
 
     if (effectiveStatus === "blocked") {
-      return "A conta desta empresa esta bloqueada.";
+      return "A conta desta empresa está bloqueada.";
     }
 
     if (effectivePaymentStatus === "pending") {
-      return "Pagamento ainda nao aprovado. Finalize o plano para liberar o acesso.";
+      return "Pagamento ainda não aprovado. Finalize o plano para liberar o acesso.";
     }
     if (effectivePaymentStatus === "rejected" || effectivePaymentStatus === "cancelled") {
-      return "Pagamento nao aprovado. Gere um novo link de pagamento ou contate o administrador.";
+      return "Pagamento não aprovado. Gere um novo link de pagamento ou contate o administrador.";
     }
     if (effectivePaymentStatus === "expired" || effectiveStatus === "inadimplente") {
-      return "Acesso indisponivel por inadimplencia ou vencimento do plano.";
+      return "Acesso indisponível por inadimplência ou vencimento do plano.";
     }
     if (effectiveDueAt && new Date(effectiveDueAt).getTime() < Date.now()) {
-      return "Acesso indisponivel por vencimento do plano.";
+      return "Acesso indisponível por vencimento do plano.";
     }
     return "";
   }
@@ -4248,7 +4252,7 @@ const startPcdDigital = () => {
 
     setAuthAccessType("buyer", { preserveMode: true });
     setAuthMode("login");
-    setAuthStatus("Modo local ativo. Use o login da empresa para testes ou entre como administrador com o usuario padrao.");
+      setAuthStatus("Modo local ativo. Use o login da empresa para testes ou entre como administrador com o usuário padrão.");
   }
 
   function applyCheckoutQueryFeedback() {
@@ -4263,11 +4267,11 @@ const startPcdDigital = () => {
       setAuthMode("login");
 
       if (checkoutStatus === "success") {
-        setAuthStatus("Retorno de pagamento recebido. Assim que o webhook confirmar a aprovacao, o acesso contratado sera liberado automaticamente.");
+        setAuthStatus("Retorno de pagamento recebido. Assim que o webhook confirmar a aprovação, o acesso contratado será liberado automaticamente.");
       } else if (checkoutStatus === "pending") {
-        setAuthStatus("Pagamento em processamento. Aguarde a confirmacao do Mercado Pago antes de tentar acessar a area contratada.");
+        setAuthStatus("Pagamento em processamento. Aguarde a confirmação do Mercado Pago antes de tentar acessar a área contratada.");
       } else if (checkoutStatus === "failure") {
-        setAuthStatus("Pagamento nao concluido. Gere um novo checkout pelo cadastro ou solicite apoio comercial para retomar a contratacao.");
+        setAuthStatus("Pagamento não concluído. Gere um novo checkout pelo cadastro ou solicite apoio comercial para retomar a contratação.");
       }
     } catch (error) {
       console.error(error);
@@ -4584,7 +4588,7 @@ const startPcdDigital = () => {
     const password = valueOfRaw("loginPassword");
 
     if (!username || !password) {
-      setAuthStatus("Informe usuario ou e-mail e a senha para entrar.");
+      setAuthStatus("Informe usuário ou e-mail e a senha para entrar.");
       return;
     }
 
@@ -4612,7 +4616,8 @@ const startPcdDigital = () => {
         setAuthStatus("");
         applyAuthenticatedSession(response.user);
       } catch (error) {
-        setAuthStatus(error.message || "Credenciais invalidas. Revise usuario, e-mail e senha.");
+        setAuthStatus(error.message || "Credenciais inválidas. Revise usuário, e-mail e senha.");
+        applyCheckoutStatusAction(error && error.payload ? error.payload : null);
       }
       return;
     }
@@ -4628,7 +4633,7 @@ const startPcdDigital = () => {
     const user = userIndex >= 0 ? users[userIndex] : null;
 
     if (!user) {
-      setAuthStatus("Credenciais invalidas. Revise usuario, e-mail e senha.");
+      setAuthStatus("Credenciais inválidas. Revise usuário, e-mail e senha.");
       return;
     }
 
@@ -4639,7 +4644,7 @@ const startPcdDigital = () => {
 
     const candidateHash = await buildAuthHash(password);
     if (candidateHash !== user.passwordHash) {
-      setAuthStatus("Credenciais invalidas. Revise usuario, e-mail e senha.");
+      setAuthStatus("Credenciais inválidas. Revise usuário, e-mail e senha.");
       return;
     }
 
@@ -8321,7 +8326,8 @@ const startPcdDigital = () => {
     if (!refs.authStatus) {
       return;
     }
-    const normalized = String(message || "").trim();
+    clearAuthStatusAction();
+    const normalized = fixBrokenText(String(message || "").trim());
     refs.authStatus.textContent = normalized;
     if (!normalized) {
       delete refs.authStatus.dataset.tone;
@@ -8336,7 +8342,7 @@ const startPcdDigital = () => {
   }
 
   function inferStatusTone(message = "") {
-    const normalized = String(message || "").trim().toLowerCase();
+    const normalized = toAsciiSafeText(message).toLowerCase();
     if (!normalized) {
       return "";
     }
@@ -8379,6 +8385,99 @@ const startPcdDigital = () => {
       return "success";
     }
     return "info";
+  }
+
+  function inferStatusTone(message = "") {
+    const normalized = toAsciiSafeText(message).toLowerCase();
+    if (!normalized) {
+      return "";
+    }
+    if (
+      normalized.includes("nao foi possivel")
+      || normalized.includes("inval")
+      || normalized.includes("bloquead")
+      || normalized.includes("falh")
+      || normalized.includes("recusad")
+      || normalized.includes("cancelad")
+      || normalized.includes("vencid")
+      || normalized.includes("erro")
+    ) {
+      return "error";
+    }
+    if (
+      normalized.includes("pendente")
+      || normalized.includes("processamento")
+      || normalized.includes("aguarde")
+      || normalized.includes("analise")
+      || normalized.includes("checkout")
+      || normalized.includes("mercado pago")
+    ) {
+      return "warning";
+    }
+    if (
+      normalized.includes("sucesso")
+      || normalized.includes("liberad")
+      || normalized.includes("aprovad")
+      || normalized.includes("aberto em nova guia")
+      || normalized.includes("criada")
+      || normalized.includes("criado")
+      || normalized.includes("configurad")
+      || normalized.includes("encerrada")
+      || normalized.includes("encerrado")
+    ) {
+      return "success";
+    }
+    return "info";
+  }
+
+  function clearAuthStatusAction() {
+    if (!refs.authStatusAction) {
+      return;
+    }
+    refs.authStatusAction.classList.add("hidden");
+    refs.authStatusAction.textContent = "";
+    refs.authStatusAction.removeAttribute("href");
+  }
+
+  function setAuthStatusAction({ label = "", href = "" } = {}) {
+    if (!refs.authStatusAction) {
+      return;
+    }
+    const normalizedLabel = fixBrokenText(String(label || "").trim());
+    const normalizedHref = String(href || "").trim();
+    if (!normalizedLabel || !normalizedHref) {
+      clearAuthStatusAction();
+      return;
+    }
+    refs.authStatusAction.textContent = normalizedLabel;
+    refs.authStatusAction.href = normalizedHref;
+    refs.authStatusAction.classList.remove("hidden");
+  }
+
+  function resolveCheckoutStatusActionPayload(source) {
+    if (!source || typeof source !== "object") {
+      return { href: "", label: "" };
+    }
+    const user = source.user || {};
+    const checkout = source.checkout || {};
+    const href = String(checkout.checkoutUrl || checkout.sandboxCheckoutUrl || user.mpCheckoutUrl || "").trim();
+    if (!href) {
+      return { href: "", label: "" };
+    }
+    const paymentStatus = normalizeLocalPaymentStatus(user.paymentStatus || "");
+    return {
+      href,
+      label: paymentStatus === "pending" ? "Retomar pagamento" : "Abrir checkout do plano"
+    };
+  }
+
+  function applyCheckoutStatusAction(source) {
+    const action = resolveCheckoutStatusActionPayload(source);
+    if (!action.href) {
+      return false;
+    }
+    setAuthStatusAction(action);
+    return true;
   }
 
   function updateAuthEntryCopy() {
@@ -8560,7 +8659,7 @@ const startPcdDigital = () => {
     const password = valueOfRaw("loginPassword");
 
     if (!username || !password) {
-      setAuthStatus("Informe usuario ou e-mail e a senha para entrar.");
+      setAuthStatus("Informe usuário ou e-mail e a senha para entrar.");
       return;
     }
 
@@ -8590,7 +8689,8 @@ const startPcdDigital = () => {
         setAuthStatus("");
         applyAuthenticatedSession(response.user);
       } catch (error) {
-        setAuthStatus(error.message || "Credenciais invalidas. Revise usuario, e-mail e senha.");
+        setAuthStatus(error.message || "Credenciais inválidas. Revise usuário, e-mail e senha.");
+        applyCheckoutStatusAction(error && error.payload ? error.payload : null);
       }
       return;
     }
@@ -8601,7 +8701,7 @@ const startPcdDigital = () => {
     const user = userIndex >= 0 ? users[userIndex] : null;
 
     if (!user) {
-      setAuthStatus("Credenciais invalidas. Revise usuario, e-mail e senha.");
+      setAuthStatus("Credenciais inválidas. Revise usuário, e-mail e senha.");
       return;
     }
 
@@ -8612,7 +8712,7 @@ const startPcdDigital = () => {
 
     const candidateHash = await buildAuthHash(password);
     if (candidateHash !== user.passwordHash) {
-      setAuthStatus("Credenciais invalidas. Revise usuario, e-mail e senha.");
+      setAuthStatus("Credenciais inválidas. Revise usuário, e-mail e senha.");
       return;
     }
 
@@ -17056,7 +17156,7 @@ const startPcdDigital = () => {
 
   function getPlanAudienceLabel(plan = {}) {
     return normalizeClientPlanAudienceKey(plan.audienceKey || plan.audience) === "doctor"
-      ? "Medico"
+      ? "Médico"
       : "Empresa";
   }
 
@@ -17065,13 +17165,13 @@ const startPcdDigital = () => {
       ? null
       : Number(plan.laudoLimit || 0);
     if (laudoLimit === null) {
-      return "Operacao sem franquia de laudos";
+      return "Operação sem franquia de laudos";
     }
     if (normalizeClientPlanBillingModel(plan.billingModel) === "subscription") {
-      return `${laudoLimit} laudos por mes`;
+      return `${laudoLimit} laudos por mês`;
     }
     if (normalizeClientPlanQuotaPeriod(plan.quotaPeriod, plan.billingModel, laudoLimit) === "monthly") {
-      return `${laudoLimit} laudos renovados a cada mes`;
+      return `${laudoLimit} laudos renovados a cada mês`;
     }
     return `${laudoLimit} laudos por ciclo contratado`;
   }
@@ -17079,27 +17179,27 @@ const startPcdDigital = () => {
   function getPlanCycleSummary(plan = {}) {
     const months = Math.max(1, Number(plan.months || 1));
     if (normalizeClientPlanBillingModel(plan.billingModel) === "subscription") {
-      return "Cobranca mensal recorrente";
+      return "Cobrança mensal recorrente";
     }
-    return `${months} ${months === 1 ? "mes" : "meses"} de vigencia comercial`;
+    return `${months} ${months === 1 ? "mês" : "meses"} de vigência comercial`;
   }
 
   function getPlanCheckoutSummary(plan = {}) {
     return normalizeClientPlanBillingModel(plan.billingModel) === "subscription"
       ? "Assinatura mensal via Mercado Pago"
-      : "Pagamento unico via Mercado Pago";
+      : "Pagamento único via Mercado Pago";
   }
 
   function getPlanActivationSummary(plan = {}, journey = "company") {
     const isDoctorJourney = journey === "doctor";
     if (normalizeClientPlanBillingModel(plan.billingModel) === "subscription") {
       return isDoctorJourney
-        ? "Emissao liberada apos pagamento aprovado e validacao administrativa do CRM."
-        : "Acesso liberado apos a confirmacao da primeira cobranca recorrente.";
+        ? "Emissão liberada após pagamento aprovado e validação administrativa do CRM."
+        : "Acesso liberado após a confirmação da primeira cobrança recorrente.";
     }
     return isDoctorJourney
-      ? "Liberacao comercial apos pagamento aprovado, com emissao condicionada a validacao do CRM."
-      : "Acesso liberado apos a aprovacao do checkout comercial.";
+      ? "Liberação comercial após pagamento aprovado, com emissão condicionada à validação do CRM."
+      : "Acesso liberado após a aprovação do checkout comercial.";
   }
 
   function renderSelectedPlanBrief(plan, journey = "company") {
@@ -17108,25 +17208,25 @@ const startPcdDigital = () => {
     }
 
     if (!plan) {
-      refs.selectedPlanBriefTitle.textContent = "Resumo da contratacao";
-      refs.selectedPlanBriefDescription.textContent = "Selecione um plano para visualizar cobranca, franquia, ciclo e regra de liberacao.";
+      refs.selectedPlanBriefTitle.textContent = "Resumo da contratação";
+      refs.selectedPlanBriefDescription.textContent = "Selecione um plano para visualizar cobrança, franquia, ciclo e regra de liberação.";
       refs.selectedPlanBriefBilling.textContent = "Checkout Mercado Pago";
-      refs.selectedPlanBriefMeta.innerHTML = '<span class="selected-plan-chip">Liberacao condicionada ao pagamento aprovado</span>';
+      refs.selectedPlanBriefMeta.innerHTML = '<span class="selected-plan-chip">Liberação condicionada ao pagamento aprovado</span>';
       return;
     }
 
     const isDoctorJourney = journey === "doctor";
     const priceLabel = formatCurrencyCents(Number(plan.priceCents || 0));
     const description = isDoctorJourney
-      ? "Cadastro profissional com cobranca integrada, franquia vinculada ao medico autenticado e controle de emissao por status comercial."
-      : "Contratacao empresarial com dashboard administrativo, cobranca integrada e visibilidade sobre vigencia, uso e renovacao.";
+      ? "Cadastro profissional com cobrança integrada, franquia vinculada ao médico autenticado e controle de emissão por status comercial."
+      : "Contratação empresarial com dashboard administrativo, cobrança integrada e visibilidade sobre vigência, uso e renovação.";
     const meta = [
       getPlanQuotaSummary(plan),
       getPlanCycleSummary(plan),
       getPlanActivationSummary(plan, journey),
       normalizeClientPlanBillingModel(plan.billingModel) === "subscription"
-        ? "Renovacao comercial acompanhada por ciclo mensal."
-        : "Retorno do checkout tratado antes da liberacao operacional."
+        ? "Renovação comercial acompanhada por ciclo mensal."
+        : "Retorno do checkout tratado antes da liberação operacional."
     ];
 
     refs.selectedPlanBriefTitle.textContent = `${fixBrokenText(plan.label || "Plano selecionado")} - ${priceLabel}`;
@@ -17779,21 +17879,21 @@ const startPcdDigital = () => {
     const selectedPlanId = refs.registerPlan ? refs.registerPlan.value : "";
     const chosenPlan = resolveJourneyPlan(journey, catalog, selectedPlanId);
 
-    if (companyLabel) companyLabel.textContent = isDoctorJourney ? "Nome do medico" : "Empresa";
-    if (refs.registerCompany) refs.registerCompany.placeholder = isDoctorJourney ? "Nome completo do medico" : "Razao social ou nome fantasia";
-    if (contactSpan) contactSpan.textContent = isDoctorJourney ? "Clinica / nome de exibicao" : "Responsavel";
+    if (companyLabel) companyLabel.textContent = isDoctorJourney ? "Nome do médico" : "Empresa";
+    if (refs.registerCompany) refs.registerCompany.placeholder = isDoctorJourney ? "Nome completo do médico" : "Razão social ou nome fantasia";
+    if (contactSpan) contactSpan.textContent = isDoctorJourney ? "Clínica / nome de exibição" : "Responsável";
     if (refs.registerContactName) {
       refs.registerContactName.placeholder = isDoctorJourney
-        ? "Clinica, consultorio ou identificacao profissional"
-        : "Nome do responsavel pela conta";
+        ? "Clínica, consultório ou identificação profissional"
+        : "Nome do responsável pela conta";
     }
     if (refs.registerEmail) refs.registerEmail.placeholder = isDoctorJourney ? "medico@dominio.com.br" : "contato@empresa.com.br";
-    if (refs.registerUsername) refs.registerUsername.placeholder = isDoctorJourney ? "Usuario profissional do medico" : "Usuario principal da empresa";
+    if (refs.registerUsername) refs.registerUsername.placeholder = isDoctorJourney ? "Usuário profissional do médico" : "Usuário principal da empresa";
 
     if (journeyNote) {
       journeyNote.textContent = isDoctorJourney
-        ? "Cadastro medico com contratacao comercial integrada. O plano recorrente mensal libera 30 laudos por ciclo, enquanto os demais seguem em formato avulso por pacote."
-        : "Cadastro empresarial com planos administraveis pelo painel, valores sincronizados com a tela inicial e checkout comercial centralizado no Mercado Pago.";
+        ? "Cadastro médico com contratação comercial integrada. O plano recorrente mensal libera 30 laudos por ciclo, enquanto os demais seguem em formato avulso por pacote."
+        : "Cadastro empresarial com planos administráveis pelo painel, valores sincronizados com a tela inicial e checkout comercial centralizado no Mercado Pago.";
     }
 
     if (registerCompanyCnpjField) registerCompanyCnpjField.classList.toggle("hidden", isDoctorJourney);
@@ -17803,11 +17903,11 @@ const startPcdDigital = () => {
     if (doctorValidationNote) {
       doctorValidationNote.textContent = !isDoctorJourney
         ? ""
-        : "CRM, CPF e data de nascimento permanecem obrigatorios no cadastro. O medico pode contratar assinatura mensal com 30 laudos por ciclo ou pacotes avulsos para consumo por contrato.";
+        : "CRM, CPF e data de nascimento permanecem obrigatórios no cadastro. O médico pode contratar assinatura mensal com 30 laudos por ciclo ou pacotes avulsos para consumo por contrato.";
     }
 
     if (registerPlanLabel) {
-      registerPlanLabel.textContent = isDoctorJourney ? "Plano medico selecionado" : "Plano empresarial selecionado";
+      registerPlanLabel.textContent = isDoctorJourney ? "Plano médico selecionado" : "Plano empresarial selecionado";
     }
 
     if (refs.registerPlan) {
@@ -17881,20 +17981,20 @@ const startPcdDigital = () => {
 
     if (!company || !email || !username || !password || !passwordConfirm) {
       setAuthStatus(isDoctorJourney
-        ? "Preencha nome do medico, e-mail, usuario, senha e confirmacao para solicitar o acesso medico."
-        : "Preencha empresa, responsavel, e-mail, usuario, senha e confirmacao para criar a conta.");
+        ? "Preencha nome do médico, e-mail, usuário, senha e confirmação para solicitar o acesso médico."
+        : "Preencha empresa, responsável, e-mail, usuário, senha e confirmação para criar a conta.");
       return;
     }
     if (!email.includes("@")) {
-      setAuthStatus("Informe um e-mail valido para continuar.");
+      setAuthStatus("Informe um e-mail válido para continuar.");
       return;
     }
     if (!isDoctorJourney && companyCnpj.length !== 14) {
-      setAuthStatus("Informe um CNPJ valido com 14 digitos para concluir o cadastro empresarial.");
+      setAuthStatus("Informe um CNPJ válido com 14 dígitos para concluir o cadastro empresarial.");
       return;
     }
     if (!plan) {
-      setAuthStatus("Selecione um plano compativel com este perfil para continuar.");
+      setAuthStatus("Selecione um plano compatível com este perfil para continuar.");
       return;
     }
     if (password.length < 6) {
@@ -17902,35 +18002,35 @@ const startPcdDigital = () => {
       return;
     }
     if (password !== passwordConfirm) {
-      setAuthStatus("A confirmacao da senha nao confere.");
+      setAuthStatus("A confirmação da senha não confere.");
       return;
     }
     if (!legalTermsAccepted) {
-      setAuthStatus("Confirme a ciencia sobre o uso do sistema como apoio tecnico para continuar.");
+      setAuthStatus("Confirme a ciência sobre o uso do sistema como apoio técnico para continuar.");
       return;
     }
     if (isDoctorJourney) {
       if (!crmNumber || crmNumber.length < 4 || !crmState) {
-        setAuthStatus("Informe CRM e UF validos para solicitar o plano medico.");
+        setAuthStatus("Informe CRM e UF válidos para solicitar o plano médico.");
         return;
       }
       if (doctorCpf.length !== 11) {
-        setAuthStatus("Informe o CPF completo do medico para concluir o cadastro.");
+        setAuthStatus("Informe o CPF completo do médico para concluir o cadastro.");
         return;
       }
       if (!doctorBirthDate) {
-        setAuthStatus("Informe a data de nascimento do medico para concluir o cadastro.");
+        setAuthStatus("Informe a data de nascimento do médico para concluir o cadastro.");
         return;
       }
       if (!doctorTermsAccepted) {
-        setAuthStatus("Confirme a responsabilidade tecnica medica para prosseguir.");
+        setAuthStatus("Confirme a responsabilidade técnica médica para prosseguir.");
         return;
       }
       if (!contactName) {
         contactName = company;
       }
     } else if (!contactName) {
-      setAuthStatus("Informe o responsavel da conta empresarial.");
+      setAuthStatus("Informe o responsável da conta empresarial.");
       return;
     }
 
@@ -17964,7 +18064,7 @@ const startPcdDigital = () => {
 
         if (refs.registerForm) refs.registerForm.reset();
         syncCommercialJourneyUI();
-        if (refs.loginUsername) refs.loginUsername.value = username;
+        if (refs.loginUsername) refs.loginUsername.value = response && response.user && response.user.username ? response.user.username : username;
 
         setAuthAccessType("buyer", { preserveMode: true });
         setAuthMode("login");
@@ -17978,27 +18078,29 @@ const startPcdDigital = () => {
           if (checkoutMode === "subscription") {
             setAuthStatus(isDoctorJourney
               ? (popup
-                ? "Cadastro medico criado. A assinatura mensal foi aberta em nova guia. Sao 30 laudos por ciclo apos confirmacao do pagamento."
-                : "Cadastro medico criado. Finalize a assinatura mensal para liberar 30 laudos por ciclo.")
+                ? "Cadastro médico criado. A assinatura mensal foi aberta em nova guia. São 30 laudos por ciclo após confirmação do pagamento."
+                : "Cadastro médico criado. Finalize a assinatura mensal para liberar 30 laudos por ciclo.")
               : (popup
-                ? "Conta criada. A assinatura recorrente foi aberta em nova guia para concluir a ativacao comercial."
-                : "Conta criada. Finalize a assinatura recorrente para concluir a ativacao comercial."));
+                ? "Conta criada. A assinatura recorrente foi aberta em nova guia para concluir a ativação comercial."
+                : "Conta criada. Finalize a assinatura recorrente para concluir a ativação comercial."));
           } else {
             setAuthStatus(isDoctorJourney
               ? (popup
-                ? "Cadastro medico criado. O checkout do pacote foi aberto em nova guia para concluir a liberacao comercial."
-                : "Cadastro medico criado. Finalize o checkout do pacote para concluir a liberacao comercial.")
+                ? "Cadastro médico criado. O checkout do pacote foi aberto em nova guia para concluir a liberação comercial."
+                : "Cadastro médico criado. Finalize o checkout do pacote para concluir a liberação comercial.")
               : (popup
-                ? "Solicitacao criada com sucesso. O checkout foi aberto em nova guia para concluir a ativacao comercial."
-                : "Solicitacao criada com sucesso. Finalize o checkout para concluir a ativacao comercial."));
+                ? "Solicitação criada com sucesso. O checkout foi aberto em nova guia para concluir a ativação comercial."
+                : "Solicitação criada com sucesso. Finalize o checkout para concluir a ativação comercial."));
           }
+          applyCheckoutStatusAction(response);
         } else {
           setAuthStatus(response.message || (checkoutMode === "subscription"
             ? "Conta criada. Configure o Mercado Pago para concluir a assinatura recorrente."
-            : "Conta criada. Configure o Mercado Pago para concluir o checkout automatico."));
+            : "Conta criada. Configure o Mercado Pago para concluir o checkout automático."));
         }
       } catch (error) {
-        setAuthStatus(error.message || "Nao foi possivel concluir a solicitacao de acesso neste momento.");
+        setAuthStatus(error.message || "Não foi possível concluir a solicitação de acesso neste momento.");
+        applyCheckoutStatusAction(error && error.payload ? error.payload : null);
       }
       return;
     }
@@ -18006,11 +18108,11 @@ const startPcdDigital = () => {
     const users = readLocalUsers();
     const usernameKey = normalizeUserIdentifier(username);
     if (users.some((item) => item.usernameKey === usernameKey)) {
-      setAuthStatus("Ja existe um acesso local com esse usuario.");
+      setAuthStatus("Já existe um acesso local com esse usuário.");
       return;
     }
     if (users.some((item) => normalizeUserIdentifier(item.email) === normalizeUserIdentifier(email))) {
-      setAuthStatus("Ja existe uma conta local vinculada a este e-mail.");
+      setAuthStatus("Já existe uma conta local vinculada a este e-mail.");
       return;
     }
 
@@ -18029,8 +18131,8 @@ const startPcdDigital = () => {
       paymentDueAt: addMonthsToIso(new Date(), Number(plan.months || 1)),
       planId: plan.id,
       notes: isDoctorJourney
-        ? `Cadastro medico local com CRM ${crmState}-${crmNumber}.`
-        : "Cadastro empresarial local para apoio tecnico.",
+        ? `Cadastro médico local com CRM ${crmState}-${crmNumber}.`
+        : "Cadastro empresarial local para apoio técnico.",
       accountType: isDoctorJourney ? "doctor" : "company",
       crmNumber,
       crmState,
@@ -18053,8 +18155,8 @@ const startPcdDigital = () => {
       setAuthAccessType("buyer", { preserveMode: true });
       setAuthMode("login");
       setAuthStatus(isSubscriptionPlan
-        ? "Cadastro medico criado em modo local. A assinatura recorrente ficou simulada neste navegador."
-        : "Cadastro medico criado em modo local. O pacote comercial ficou registrado neste navegador.");
+        ? "Cadastro médico criado em modo local. A assinatura recorrente ficou simulada neste navegador."
+        : "Cadastro médico criado em modo local. O pacote comercial ficou registrado neste navegador.");
       return;
     }
 
@@ -18187,20 +18289,20 @@ const startPcdDigital = () => {
 
     if (!company || !email || !username || !password || !passwordConfirm) {
       setAuthStatus(isDoctorJourney
-        ? "Preencha nome do medico, e-mail, usuario, senha e confirmacao para solicitar o acesso medico."
-        : "Preencha empresa, responsavel, e-mail, usuario, senha e confirmacao para criar a conta.");
+        ? "Preencha nome do médico, e-mail, usuário, senha e confirmação para solicitar o acesso médico."
+        : "Preencha empresa, responsável, e-mail, usuário, senha e confirmação para criar a conta.");
       return;
     }
     if (!email.includes("@")) {
-      setAuthStatus("Informe um e-mail valido para continuar.");
+      setAuthStatus("Informe um e-mail válido para continuar.");
       return;
     }
     if (!isDoctorJourney && companyCnpj.length !== 14) {
-      setAuthStatus("Informe um CNPJ valido com 14 digitos para concluir o cadastro empresarial.");
+      setAuthStatus("Informe um CNPJ válido com 14 dígitos para concluir o cadastro empresarial.");
       return;
     }
     if (!plan) {
-      setAuthStatus("Selecione um plano compativel com este perfil para continuar.");
+      setAuthStatus("Selecione um plano compatível com este perfil para continuar.");
       return;
     }
     if (password.length < 6) {
@@ -18906,21 +19008,21 @@ const startPcdDigital = () => {
     const selectedPlanId = refs.registerPlan ? refs.registerPlan.value : "";
     const chosenPlan = resolveJourneyPlan(journey, catalog, selectedPlanId);
 
-    if (companyLabel) companyLabel.textContent = isDoctorJourney ? "Nome do medico" : "Empresa";
-    if (refs.registerCompany) refs.registerCompany.placeholder = isDoctorJourney ? "Nome completo do medico" : "Razao social ou nome fantasia";
-    if (contactSpan) contactSpan.textContent = isDoctorJourney ? "Clinica / nome de exibicao" : "Responsavel";
+    if (companyLabel) companyLabel.textContent = isDoctorJourney ? "Nome do médico" : "Empresa";
+    if (refs.registerCompany) refs.registerCompany.placeholder = isDoctorJourney ? "Nome completo do médico" : "Razão social ou nome fantasia";
+    if (contactSpan) contactSpan.textContent = isDoctorJourney ? "Clínica / nome de exibição" : "Responsável";
     if (refs.registerContactName) {
       refs.registerContactName.placeholder = isDoctorJourney
-        ? "Clinica, consultorio ou identificacao profissional"
-        : "Nome do responsavel pela conta";
+        ? "Clínica, consultório ou identificação profissional"
+        : "Nome do responsável pela conta";
     }
     if (refs.registerEmail) refs.registerEmail.placeholder = isDoctorJourney ? "medico@dominio.com.br" : "contato@empresa.com.br";
-    if (refs.registerUsername) refs.registerUsername.placeholder = isDoctorJourney ? "Usuario profissional do medico" : "Usuario principal da empresa";
+    if (refs.registerUsername) refs.registerUsername.placeholder = isDoctorJourney ? "Usuário profissional do médico" : "Usuário principal da empresa";
 
     if (journeyNote) {
       journeyNote.textContent = isDoctorJourney
-        ? "Cadastro medico com contratacao comercial integrada. O plano recorrente mensal libera 30 laudos por ciclo, enquanto os demais seguem em formato avulso por pacote."
-        : "Cadastro empresarial com planos administraveis pelo painel, valores sincronizados com a tela inicial e checkout comercial centralizado no Mercado Pago.";
+        ? "Cadastro médico com contratação comercial integrada. O plano recorrente mensal libera 30 laudos por ciclo, enquanto os demais seguem em formato avulso por pacote."
+        : "Cadastro empresarial com planos administráveis pelo painel, valores sincronizados com a tela inicial e checkout comercial centralizado no Mercado Pago.";
     }
 
     if (registerCompanyCnpjField) registerCompanyCnpjField.classList.toggle("hidden", isDoctorJourney);
@@ -18930,11 +19032,11 @@ const startPcdDigital = () => {
     if (doctorValidationNote) {
       doctorValidationNote.textContent = !isDoctorJourney
         ? ""
-        : "CRM, CPF e data de nascimento permanecem obrigatorios no cadastro. O medico pode contratar assinatura mensal com 30 laudos por ciclo ou pacotes avulsos para consumo por contrato.";
+        : "CRM, CPF e data de nascimento permanecem obrigatórios no cadastro. O médico pode contratar assinatura mensal com 30 laudos por ciclo ou pacotes avulsos para consumo por contrato.";
     }
 
     if (registerPlanLabel) {
-      registerPlanLabel.textContent = isDoctorJourney ? "Plano medico selecionado" : "Plano empresarial selecionado";
+      registerPlanLabel.textContent = isDoctorJourney ? "Plano médico selecionado" : "Plano empresarial selecionado";
     }
 
     if (refs.registerPlan) {
@@ -19029,35 +19131,35 @@ const startPcdDigital = () => {
       return;
     }
     if (password !== passwordConfirm) {
-      setAuthStatus("A confirmacao da senha nao confere.");
+      setAuthStatus("A confirmação da senha não confere.");
       return;
     }
     if (!legalTermsAccepted) {
-      setAuthStatus("Confirme a ciencia sobre o uso do sistema como apoio tecnico para continuar.");
+      setAuthStatus("Confirme a ciência sobre o uso do sistema como apoio técnico para continuar.");
       return;
     }
     if (isDoctorJourney) {
       if (!crmNumber || crmNumber.length < 4 || !crmState) {
-        setAuthStatus("Informe CRM e UF validos para solicitar o plano medico.");
+        setAuthStatus("Informe CRM e UF válidos para solicitar o plano médico.");
         return;
       }
       if (doctorCpf.length !== 11) {
-        setAuthStatus("Informe o CPF completo do medico para concluir o cadastro.");
+        setAuthStatus("Informe o CPF completo do médico para concluir o cadastro.");
         return;
       }
       if (!doctorBirthDate) {
-        setAuthStatus("Informe a data de nascimento do medico para concluir o cadastro.");
+        setAuthStatus("Informe a data de nascimento do médico para concluir o cadastro.");
         return;
       }
       if (!doctorTermsAccepted) {
-        setAuthStatus("Confirme a responsabilidade tecnica medica para prosseguir.");
+        setAuthStatus("Confirme a responsabilidade técnica médica para prosseguir.");
         return;
       }
       if (!contactName) {
         contactName = company;
       }
     } else if (!contactName) {
-      setAuthStatus("Informe o responsavel da conta empresarial.");
+      setAuthStatus("Informe o responsável da conta empresarial.");
       return;
     }
 
@@ -19091,7 +19193,7 @@ const startPcdDigital = () => {
 
         if (refs.registerForm) refs.registerForm.reset();
         syncCommercialJourneyUI();
-        if (refs.loginUsername) refs.loginUsername.value = username;
+        if (refs.loginUsername) refs.loginUsername.value = response && response.user && response.user.username ? response.user.username : username;
 
         setAuthAccessType("buyer", { preserveMode: true });
         setAuthMode("login");
@@ -19105,27 +19207,29 @@ const startPcdDigital = () => {
           if (checkoutMode === "subscription") {
             setAuthStatus(isDoctorJourney
               ? (popup
-                ? "Cadastro medico criado. A assinatura mensal foi aberta em nova guia. Sao 30 laudos por ciclo apos confirmacao do pagamento."
-                : "Cadastro medico criado. Finalize a assinatura mensal para liberar 30 laudos por ciclo.")
+                ? "Cadastro médico criado. A assinatura mensal foi aberta em nova guia. São 30 laudos por ciclo após confirmação do pagamento."
+                : "Cadastro médico criado. Finalize a assinatura mensal para liberar 30 laudos por ciclo.")
               : (popup
-                ? "Conta criada. A assinatura recorrente foi aberta em nova guia para concluir a ativacao comercial."
-                : "Conta criada. Finalize a assinatura recorrente para concluir a ativacao comercial."));
+                ? "Conta criada. A assinatura recorrente foi aberta em nova guia para concluir a ativação comercial."
+                : "Conta criada. Finalize a assinatura recorrente para concluir a ativação comercial."));
           } else {
             setAuthStatus(isDoctorJourney
               ? (popup
-                ? "Cadastro medico criado. O checkout do pacote foi aberto em nova guia para concluir a liberacao comercial."
-                : "Cadastro medico criado. Finalize o checkout do pacote para concluir a liberacao comercial.")
+                ? "Cadastro médico criado. O checkout do pacote foi aberto em nova guia para concluir a liberação comercial."
+                : "Cadastro médico criado. Finalize o checkout do pacote para concluir a liberação comercial.")
               : (popup
-                ? "Solicitacao criada com sucesso. O checkout foi aberto em nova guia para concluir a ativacao comercial."
-                : "Solicitacao criada com sucesso. Finalize o checkout para concluir a ativacao comercial."));
+                ? "Solicitação criada com sucesso. O checkout foi aberto em nova guia para concluir a ativação comercial."
+                : "Solicitação criada com sucesso. Finalize o checkout para concluir a ativação comercial."));
           }
+          applyCheckoutStatusAction(response);
         } else {
           setAuthStatus(response.message || (checkoutMode === "subscription"
             ? "Conta criada. Configure o Mercado Pago para concluir a assinatura recorrente."
-            : "Conta criada. Configure o Mercado Pago para concluir o checkout automatico."));
+            : "Conta criada. Configure o Mercado Pago para concluir o checkout automático."));
         }
       } catch (error) {
-        setAuthStatus(error.message || "Nao foi possivel concluir a solicitacao de acesso neste momento.");
+        setAuthStatus(error.message || "Não foi possível concluir a solicitação de acesso neste momento.");
+        applyCheckoutStatusAction(error && error.payload ? error.payload : null);
       }
       return;
     }
@@ -19133,11 +19237,11 @@ const startPcdDigital = () => {
     const users = readLocalUsers();
     const usernameKey = normalizeUserIdentifier(username);
     if (users.some((item) => item.usernameKey === usernameKey)) {
-      setAuthStatus("Ja existe um acesso local com esse usuario.");
+      setAuthStatus("Já existe um acesso local com esse usuário.");
       return;
     }
     if (users.some((item) => normalizeUserIdentifier(item.email) === normalizeUserIdentifier(email))) {
-      setAuthStatus("Ja existe uma conta local vinculada a este e-mail.");
+      setAuthStatus("Já existe uma conta local vinculada a este e-mail.");
       return;
     }
 
@@ -19156,8 +19260,8 @@ const startPcdDigital = () => {
       paymentDueAt: addMonthsToIso(new Date(), Number(plan.months || 1)),
       planId: plan.id,
       notes: isDoctorJourney
-        ? `Cadastro medico local com CRM ${crmState}-${crmNumber}.`
-        : "Cadastro empresarial local para apoio tecnico.",
+        ? `Cadastro médico local com CRM ${crmState}-${crmNumber}.`
+        : "Cadastro empresarial local para apoio técnico.",
       accountType: isDoctorJourney ? "doctor" : "company",
       crmNumber,
       crmState,
@@ -19180,8 +19284,8 @@ const startPcdDigital = () => {
       setAuthAccessType("buyer", { preserveMode: true });
       setAuthMode("login");
       setAuthStatus(isSubscriptionPlan
-        ? "Cadastro medico criado em modo local. A assinatura recorrente ficou simulada neste navegador."
-        : "Cadastro medico criado em modo local. O pacote comercial ficou registrado neste navegador.");
+        ? "Cadastro médico criado em modo local. A assinatura recorrente ficou simulada neste navegador."
+        : "Cadastro médico criado em modo local. O pacote comercial ficou registrado neste navegador.");
       return;
     }
 
@@ -19190,6 +19294,852 @@ const startPcdDigital = () => {
     persistLocalSessionUser(session);
     applyAuthenticatedSession(session);
   }
+
+  function updateAuthEntryCopy() {
+    const isAdmin = state.authAccessType === "admin";
+    const isRegister = state.authMode === "register";
+    const isSetup = state.authMode === "setup";
+    const journey = getCommercialJourney();
+    const isDoctorJourney = journey === "doctor";
+    const providerLabel = state.authProvider === "local" ? "local" : "SaaS";
+    const accessGrid = document.getElementById("authAccessGrid");
+
+    if (refs.authModeBadge) {
+      refs.authModeBadge.textContent = isSetup
+        ? "Configuração do administrador"
+        : isRegister
+          ? (isDoctorJourney ? "Cadastro médico" : "Cadastro empresarial")
+          : (isAdmin ? `Acesso administrador ${providerLabel}` : `Acesso profissional ${providerLabel}`);
+    }
+
+    if (refs.authTitle) {
+      refs.authTitle.textContent = isSetup
+        ? "Configurar administrador da plataforma"
+        : isRegister
+          ? (isDoctorJourney ? "Solicitar plano médico" : "Solicitar plano empresarial")
+          : (isAdmin ? "Entrar no painel administrativo" : "Entrar na área profissional");
+    }
+
+    if (refs.authDescription) {
+      refs.authDescription.textContent = isSetup
+        ? "Fluxo inicial do administrador principal da plataforma."
+        : isRegister
+          ? (isDoctorJourney
+            ? "Cadastro exclusivo para médico com CRM válido, assinatura mensal de 30 laudos ou pacote avulso, sempre condicionado ao pagamento aprovado."
+            : "Cadastro empresarial voltado ao dashboard administrativo, gestão de médicos vinculados e indicadores de uso.")
+          : (isAdmin
+            ? "Entrada restrita para clientes, pagamentos, bloqueios, renovações e acompanhamento de uso."
+            : "Use este acesso para entrar com a conta contratada. Empresas acessam o dashboard administrativo; médicos autenticados acessam a área técnica.");
+    }
+
+    if (refs.loginSubmitButton) {
+      refs.loginSubmitButton.textContent = isAdmin ? "Entrar no painel administrativo" : "Entrar na área profissional";
+    }
+
+    if (refs.showRegisterButton) {
+      refs.showRegisterButton.textContent = "Ver planos";
+      refs.showRegisterButton.classList.toggle("hidden", isAdmin || isRegister || isSetup);
+    }
+
+    if (refs.showLoginFromRegisterButton) {
+      refs.showLoginFromRegisterButton.textContent = "Voltar para login";
+    }
+
+    if (refs.showSetupButton) {
+      refs.showSetupButton.classList.toggle("hidden", !isAdmin || isSetup || (state.authBootstrap && state.authBootstrap.configured));
+    }
+
+    if (accessGrid) {
+      accessGrid.classList.toggle("hidden", isRegister || isSetup);
+    }
+
+    syncCommercialJourneyUI();
+  }
+
+  function syncCommercialJourneyUI() {
+    const journey = getCommercialJourney();
+    const isDoctorJourney = journey === "doctor";
+    const companyLabel = document.getElementById("registerCompanyLabel");
+    const contactSpan = refs.registerContactName ? refs.registerContactName.closest("label").querySelector("span") : null;
+    const journeyNote = document.getElementById("registerJourneyNote");
+    const doctorFields = document.getElementById("doctorCredentialFields");
+    const doctorResponsibilityCard = document.getElementById("doctorResponsibilityCard");
+    const doctorValidationNote = document.getElementById("registerDoctorValidationNote");
+    const registerCompanyCnpjField = document.getElementById("registerCompanyCnpjField");
+    const registerPlanGrid = document.getElementById("registerPlanGrid");
+    const registerPlanLabel = refs.registerPlan ? refs.registerPlan.closest("label").querySelector("span") : null;
+    const registerSubmitButton = refs.registerSubmitButton;
+    const catalog = getStoredPlanCatalog({ includeInactive: false });
+    const journeyPlans = getPlansForJourney(journey, catalog);
+    const selectedPlanId = refs.registerPlan ? refs.registerPlan.value : "";
+    const chosenPlan = resolveJourneyPlan(journey, catalog, selectedPlanId);
+
+    if (companyLabel) companyLabel.textContent = isDoctorJourney ? "Nome do médico" : "Empresa";
+    if (refs.registerCompany) refs.registerCompany.placeholder = isDoctorJourney ? "Nome completo do médico" : "Razão social ou nome fantasia";
+    if (contactSpan) contactSpan.textContent = isDoctorJourney ? "Clínica / nome de exibição" : "Responsável";
+    if (refs.registerContactName) {
+      refs.registerContactName.placeholder = isDoctorJourney
+        ? "Clínica, consultório ou identificação profissional"
+        : "Nome do responsável pela conta";
+    }
+    if (refs.registerEmail) refs.registerEmail.placeholder = isDoctorJourney ? "medico@dominio.com.br" : "contato@empresa.com.br";
+    if (refs.registerUsername) refs.registerUsername.placeholder = isDoctorJourney ? "Usuário profissional do médico" : "Usuário principal da empresa";
+
+    if (journeyNote) {
+      journeyNote.textContent = isDoctorJourney
+        ? "Cadastro médico com contratação comercial integrada. O plano recorrente mensal libera 30 laudos por ciclo, enquanto os demais seguem em formato avulso por pacote."
+        : "Cadastro empresarial com planos administráveis pelo painel, valores sincronizados com a tela inicial e checkout comercial centralizado no Mercado Pago.";
+    }
+
+    if (registerCompanyCnpjField) registerCompanyCnpjField.classList.toggle("hidden", isDoctorJourney);
+    if (doctorFields) doctorFields.classList.toggle("hidden", !isDoctorJourney);
+    if (doctorResponsibilityCard) doctorResponsibilityCard.classList.toggle("hidden", !isDoctorJourney);
+
+    if (doctorValidationNote) {
+      doctorValidationNote.textContent = !isDoctorJourney
+        ? ""
+        : "CRM, CPF e data de nascimento permanecem obrigatórios no cadastro. O médico pode contratar assinatura mensal com 30 laudos por ciclo ou pacotes avulsos para consumo por contrato.";
+    }
+
+    if (registerPlanLabel) {
+      registerPlanLabel.textContent = isDoctorJourney ? "Plano médico selecionado" : "Plano empresarial selecionado";
+    }
+
+    if (refs.registerPlan) {
+      refs.registerPlan.innerHTML = journeyPlans.map((plan) => (
+        `<option value="${escapeHtml(plan.id)}"${String(plan.id || "") === String(chosenPlan && chosenPlan.id ? chosenPlan.id : "") ? " selected" : ""}>${escapeHtml(buildPlanRegisterOptionLabel(plan))}</option>`
+      )).join("");
+      refs.registerPlan.disabled = !journeyPlans.length;
+      if (chosenPlan) {
+        refs.registerPlan.value = chosenPlan.id;
+      }
+    }
+
+    renderSelectedPlanBrief(chosenPlan, journey);
+
+    if (registerSubmitButton) {
+      const billingModel = chosenPlan ? normalizeClientPlanBillingModel(chosenPlan.billingModel) : "one_time";
+      registerSubmitButton.textContent = billingModel === "subscription"
+        ? "Assinar plano no Mercado Pago"
+        : "Criar conta e seguir para pagamento";
+    }
+
+    if (registerPlanGrid) {
+      registerPlanGrid.innerHTML = buildJourneyPlanCards(journeyPlans, chosenPlan ? chosenPlan.id : "", journey);
+      registerPlanGrid.querySelectorAll("[data-register-plan-card]").forEach((card) => {
+        const selectPlan = () => {
+          if (!refs.registerPlan) {
+            return;
+          }
+          refs.registerPlan.value = card.dataset.registerPlanCard || "";
+          syncCommercialJourneyUI();
+        };
+        card.addEventListener("click", selectPlan);
+        card.addEventListener("keydown", (event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            selectPlan();
+          }
+        });
+      });
+    }
+
+    updateRegisterUsernameSuggestions();
+  }
+
+  async function handlePublicRegistration(event) {
+    event.preventDefault();
+
+    if (window.location.protocol === "file:") {
+      redirectToPreferredAppOrigin();
+      return;
+    }
+
+    const journey = getCommercialJourney();
+    const isDoctorJourney = journey === "doctor";
+    const company = refs.registerCompany ? refs.registerCompany.value.trim() : "";
+    const companyCnpj = refs.registerCompanyCnpj ? refs.registerCompanyCnpj.value.replace(/\D/g, "") : "";
+    let contactName = refs.registerContactName ? refs.registerContactName.value.trim() : "";
+    const email = refs.registerEmail ? refs.registerEmail.value.trim().toLowerCase() : "";
+    const username = refs.registerUsername ? refs.registerUsername.value.trim() : "";
+    const password = refs.registerPassword ? refs.registerPassword.value : "";
+    const passwordConfirm = refs.registerPasswordConfirm ? refs.registerPasswordConfirm.value : "";
+    const crmNumber = refs.registerDoctorCrm ? refs.registerDoctorCrm.value.replace(/\D/g, "") : "";
+    const crmState = refs.registerDoctorCrmUf ? refs.registerDoctorCrmUf.value : "";
+    const doctorCpf = refs.registerDoctorCpf ? refs.registerDoctorCpf.value.replace(/\D/g, "") : "";
+    const doctorBirthDate = refs.registerDoctorBirthDate ? refs.registerDoctorBirthDate.value : "";
+    const legalTermsAccepted = document.getElementById("registerLegalTerms") ? document.getElementById("registerLegalTerms").checked : false;
+    const doctorTermsAccepted = document.getElementById("registerDoctorTerms") ? document.getElementById("registerDoctorTerms").checked : false;
+    const selectedPlanId = refs.registerPlan ? refs.registerPlan.value : "";
+    const plan = resolveJourneyPlan(journey, getStoredPlanCatalog({ includeInactive: false }), selectedPlanId);
+    const isSubscriptionPlan = plan && normalizeClientPlanBillingModel(plan.billingModel) === "subscription";
+
+    if (!company || !email || !username || !password || !passwordConfirm) {
+      setAuthStatus(isDoctorJourney
+        ? "Preencha nome do médico, e-mail, usuário, senha e confirmação para solicitar o acesso médico."
+        : "Preencha empresa, responsável, e-mail, usuário, senha e confirmação para criar a conta.");
+      return;
+    }
+    if (!email.includes("@")) {
+      setAuthStatus("Informe um e-mail válido para continuar.");
+      return;
+    }
+    if (!isDoctorJourney && companyCnpj.length !== 14) {
+      setAuthStatus("Informe um CNPJ válido com 14 dígitos para concluir o cadastro empresarial.");
+      return;
+    }
+    if (!plan) {
+      setAuthStatus("Selecione um plano compatível com este perfil para continuar.");
+      return;
+    }
+    if (password.length < 6) {
+      setAuthStatus("A senha precisa ter pelo menos 6 caracteres.");
+      return;
+    }
+    if (password !== passwordConfirm) {
+      setAuthStatus("A confirmação da senha não confere.");
+      return;
+    }
+    if (!legalTermsAccepted) {
+      setAuthStatus("Confirme a ciência sobre o uso do sistema como apoio técnico para continuar.");
+      return;
+    }
+    if (isDoctorJourney) {
+      if (!crmNumber || crmNumber.length < 4 || !crmState) {
+        setAuthStatus("Informe CRM e UF válidos para solicitar o plano médico.");
+        return;
+      }
+      if (doctorCpf.length !== 11) {
+        setAuthStatus("Informe o CPF completo do médico para concluir o cadastro.");
+        return;
+      }
+      if (!doctorBirthDate) {
+        setAuthStatus("Informe a data de nascimento do médico para concluir o cadastro.");
+        return;
+      }
+      if (!doctorTermsAccepted) {
+        setAuthStatus("Confirme a responsabilidade técnica médica para prosseguir.");
+        return;
+      }
+      if (!contactName) {
+        contactName = company;
+      }
+    } else if (!contactName) {
+      setAuthStatus("Informe o responsável da conta empresarial.");
+      return;
+    }
+
+    clearDemoCommercialState();
+
+    if (state.authProvider === "api") {
+      try {
+        setAuthStatus(isSubscriptionPlan
+          ? "Criando a conta e preparando a assinatura recorrente no Mercado Pago..."
+          : "Criando a conta e preparando o checkout comercial...");
+
+        const response = await apiJson("/api/public/register-company", {
+          method: "POST",
+          body: {
+            company,
+            companyCnpj,
+            contactName,
+            email,
+            username,
+            password,
+            planId: plan.id,
+            accountType: isDoctorJourney ? "doctor" : "company",
+            crmNumber,
+            crmState,
+            doctorCpf,
+            doctorBirthDate,
+            legalAccepted: legalTermsAccepted,
+            doctorAccepted: doctorTermsAccepted
+          }
+        });
+
+        if (refs.registerForm) refs.registerForm.reset();
+        syncCommercialJourneyUI();
+        if (refs.loginUsername) refs.loginUsername.value = response && response.user && response.user.username ? response.user.username : username;
+
+        setAuthAccessType("buyer", { preserveMode: true });
+        setAuthMode("login");
+
+        const checkout = response && response.checkout ? response.checkout : {};
+        const checkoutUrl = checkout.checkoutUrl || checkout.sandboxCheckoutUrl || "";
+        const checkoutMode = normalizeClientPlanBillingModel(checkout.type || plan.billingModel);
+
+        if (checkoutUrl) {
+          const popup = window.open(checkoutUrl, "_blank", "noopener");
+          if (checkoutMode === "subscription") {
+            setAuthStatus(isDoctorJourney
+              ? (popup
+                ? "Cadastro médico criado. A assinatura mensal foi aberta em nova guia. São 30 laudos por ciclo após confirmação do pagamento."
+                : "Cadastro médico criado. Finalize a assinatura mensal para liberar 30 laudos por ciclo.")
+              : (popup
+                ? "Conta criada. A assinatura recorrente foi aberta em nova guia para concluir a ativação comercial."
+                : "Conta criada. Finalize a assinatura recorrente para concluir a ativação comercial."));
+          } else {
+            setAuthStatus(isDoctorJourney
+              ? (popup
+                ? "Cadastro médico criado. O checkout do pacote foi aberto em nova guia para concluir a liberação comercial."
+                : "Cadastro médico criado. Finalize o checkout do pacote para concluir a liberação comercial.")
+              : (popup
+                ? "Solicitação criada com sucesso. O checkout foi aberto em nova guia para concluir a ativação comercial."
+                : "Solicitação criada com sucesso. Finalize o checkout para concluir a ativação comercial."));
+          }
+          applyCheckoutStatusAction(response);
+        } else {
+          setAuthStatus(response.message || (checkoutMode === "subscription"
+            ? "Conta criada. Configure o Mercado Pago para concluir a assinatura recorrente."
+            : "Conta criada. Configure o Mercado Pago para concluir o checkout automático."));
+        }
+      } catch (error) {
+        setAuthStatus(error.message || "Não foi possível concluir a solicitação de acesso neste momento.");
+        applyCheckoutStatusAction(error && error.payload ? error.payload : null);
+      }
+      return;
+    }
+
+    const users = readLocalUsers();
+    const usernameKey = normalizeUserIdentifier(username);
+    if (users.some((item) => item.usernameKey === usernameKey)) {
+      setAuthStatus("Já existe um acesso local com esse usuário.");
+      return;
+    }
+    if (users.some((item) => normalizeUserIdentifier(item.email) === normalizeUserIdentifier(email))) {
+      setAuthStatus("Já existe uma conta local vinculada a este e-mail.");
+      return;
+    }
+
+    const passwordHash = await buildAuthHash(password);
+    const newUser = buildLocalUserRecord({
+      company,
+      companyCnpj,
+      username,
+      passwordHash,
+      role: "buyer",
+      status: "active",
+      expiresAt: null,
+      contactName,
+      email,
+      paymentStatus: "approved",
+      paymentDueAt: addMonthsToIso(new Date(), Number(plan.months || 1)),
+      planId: plan.id,
+      notes: isDoctorJourney
+        ? `Cadastro médico local com CRM ${crmState}-${crmNumber}.`
+        : "Cadastro empresarial local para apoio técnico.",
+      accountType: isDoctorJourney ? "doctor" : "company",
+      crmNumber,
+      crmState,
+      doctorCpf,
+      doctorBirthDate,
+      crmValidated: false,
+      linkedDoctors: [],
+      activityLog: [],
+      documentHistory: []
+    });
+
+    users.push(newUser);
+    writeLocalUsers(users);
+
+    if (refs.registerForm) refs.registerForm.reset();
+    syncCommercialJourneyUI();
+
+    if (isDoctorJourney) {
+      if (refs.loginUsername) refs.loginUsername.value = username;
+      setAuthAccessType("buyer", { preserveMode: true });
+      setAuthMode("login");
+      setAuthStatus(isSubscriptionPlan
+        ? "Cadastro médico criado em modo local. A assinatura recorrente ficou simulada neste navegador."
+        : "Cadastro médico criado em modo local. O pacote comercial ficou registrado neste navegador.");
+      return;
+    }
+
+    setAuthStatus("Conta empresarial criada em modo local.");
+    const session = buildLocalSessionUser(newUser);
+    persistLocalSessionUser(session);
+    applyAuthenticatedSession(session);
+  }
+
+  const CID_FIELD_DEFINITION_MAP = Object.freeze({
+    auditiva: { codeId: "audioCid", descriptionId: "audioCidDescription" },
+    fisica: { codeId: "physicalCid", descriptionId: "physicalCidDescription" },
+    clinicas: { codeId: "clinicalCid", descriptionId: "clinicalCidDescription" },
+    visual: { codeId: "visualCid", descriptionId: "visualCidDescription" },
+    intelectual: { codeId: "intellectualCid", descriptionId: "intellectualCidDescription" },
+    psicossocial: { codeId: "psychosocialCid", descriptionId: "psychosocialCidDescription" }
+  });
+
+  const CID_DESCRIPTION_MAP_EXTENDED = Object.freeze({
+    "F33.2": "Transtorno depressivo recorrente, epis\u00f3dio atual grave sem sintomas psic\u00f3ticos",
+    "F79": "Defici\u00eancia intelectual n\u00e3o especificada",
+    "H54.0": "Cegueira em ambos os olhos",
+    "H54.4": "Cegueira monocular",
+    "H90.3": "Perda auditiva neurossensorial bilateral",
+    "M21.7": "Desigualdade dos membros inferiores",
+    "M54.5": "Dor lombar baixa",
+    "M79.7": "Fibromialgia",
+    "S68.0": "Amputa\u00e7\u00e3o traum\u00e1tica do polegar"
+  });
+
+  function normalizePdfTextValue(value) {
+    return normalizeSpacing(String(value || ""));
+  }
+
+  function isNonInformativePdfValue(value) {
+    const normalized = normalizePdfTextValue(value).toLowerCase();
+    return !normalized
+      || normalized === "nao informado"
+      || normalized === "n\u00e3o informado"
+      || normalized === "sem matricula"
+      || normalized === "sem matr\u00edcula";
+  }
+
+  function getCidFieldDefinition(moduleKey = state.activeModule) {
+    return moduleKey && CID_FIELD_DEFINITION_MAP[moduleKey]
+      ? CID_FIELD_DEFINITION_MAP[moduleKey]
+      : null;
+  }
+
+  function parseCidEntry(value) {
+    const raw = normalizePdfTextValue(value)
+      .replace(/[–—]/g, "-")
+      .replace(/â€“|â€”/g, "-");
+    if (!raw) {
+      return { code: "", description: "" };
+    }
+
+    const match = raw.match(/^([A-Za-z][A-Za-z0-9]{1,3}(?:[.,][A-Za-z0-9]{1,4})?)(?:\s*[\u2013\u2014-]\s*(.+))?$/);
+    if (match) {
+      return {
+        code: normalizeCidCode(match[1]),
+        description: normalizePdfTextValue(match[2] || "")
+      };
+    }
+
+    const separatorMatch = raw.match(/^(.+?)\s*[\u2013\u2014-]\s*(.+)$/);
+    if (separatorMatch) {
+      return {
+        code: normalizeCidCode(separatorMatch[1]),
+        description: normalizePdfTextValue(separatorMatch[2])
+      };
+    }
+
+    const normalizedCode = normalizeCidCode(raw);
+    return /^[A-Z]\d/.test(normalizedCode)
+      ? { code: normalizedCode, description: "" }
+      : { code: "", description: raw };
+  }
+
+  function lookupCidDescription(code) {
+    const normalizedCode = normalizeCidCode(code);
+    return normalizedCode && CID_DESCRIPTION_MAP_EXTENDED[normalizedCode]
+      ? normalizePdfTextValue(CID_DESCRIPTION_MAP_EXTENDED[normalizedCode])
+      : "";
+  }
+
+  function resolveCurrentCid() {
+    const definition = getCidFieldDefinition(state.activeModule);
+    if (!definition) {
+      return "";
+    }
+    return parseCidEntry(valueOfRaw(definition.codeId)).code;
+  }
+
+  function resolveCurrentCidDescription(moduleKey = state.activeModule) {
+    const definition = getCidFieldDefinition(moduleKey);
+    if (!definition) {
+      return "";
+    }
+
+    const parsed = parseCidEntry(valueOfRaw(definition.codeId));
+    const manualDescription = normalizePdfTextValue(valueOfRaw(definition.descriptionId));
+    return manualDescription || parsed.description || lookupCidDescription(parsed.code);
+  }
+
+  function formatarCID(codigo, descricao) {
+    const normalizedCode = normalizeCidCode(codigo);
+    const normalizedDescription = normalizePdfTextValue(descricao);
+    if (!normalizedCode && !normalizedDescription) {
+      return "N\u00e3o informado";
+    }
+    if (normalizedCode && normalizedDescription) {
+      return `${normalizedCode} \u2013 ${normalizedDescription}`;
+    }
+    return normalizedCode || normalizedDescription || "N\u00e3o informado";
+  }
+
+  function formatCid(cid, description = "") {
+    const parsed = parseCidEntry(cid);
+    const normalizedCode = parsed.code;
+    const resolvedDescription = normalizePdfTextValue(description)
+      || parsed.description
+      || (normalizedCode && normalizedCode === resolveCurrentCid() ? resolveCurrentCidDescription() : "")
+      || lookupCidDescription(normalizedCode);
+    return formatarCID(normalizedCode, resolvedDescription);
+  }
+
+  function shouldOverwriteCidDescriptionField(descriptionField, nextDescription) {
+    const currentValue = normalizePdfTextValue(descriptionField.value);
+    const previousAutoValue = normalizePdfTextValue(descriptionField.dataset.autoValue || "");
+    return !currentValue
+      || descriptionField.dataset.autoFilled === "true"
+      || currentValue === previousAutoValue
+      || currentValue === normalizePdfTextValue(nextDescription);
+  }
+
+  function syncCidDescriptionField(moduleKey, options = {}) {
+    const definition = getCidFieldDefinition(moduleKey);
+    if (!definition) {
+      return;
+    }
+
+    const codeField = document.getElementById(definition.codeId);
+    const descriptionField = document.getElementById(definition.descriptionId);
+    if (!codeField || !descriptionField) {
+      return;
+    }
+
+    const parsed = parseCidEntry(codeField.value);
+    if (options.normalizeCodeField && parsed.code) {
+      codeField.value = parsed.code;
+    }
+
+    const mappedDescription = lookupCidDescription(parsed.code);
+    const nextDescription = parsed.description || mappedDescription;
+
+    if (nextDescription && shouldOverwriteCidDescriptionField(descriptionField, nextDescription)) {
+      descriptionField.value = nextDescription;
+      descriptionField.dataset.autoFilled = parsed.description ? "false" : "true";
+      descriptionField.dataset.autoValue = parsed.description ? "" : nextDescription;
+      return;
+    }
+
+    if (!nextDescription && descriptionField.dataset.autoFilled === "true") {
+      descriptionField.value = "";
+      descriptionField.dataset.autoFilled = "false";
+      descriptionField.dataset.autoValue = "";
+    }
+  }
+
+  function bindCidDescriptionFields() {
+    if (state.cidDescriptionBindingsApplied) {
+      return;
+    }
+
+    state.cidDescriptionBindingsApplied = true;
+    Object.keys(CID_FIELD_DEFINITION_MAP).forEach((moduleKey) => {
+      const definition = getCidFieldDefinition(moduleKey);
+      if (!definition) {
+        return;
+      }
+
+      const codeField = document.getElementById(definition.codeId);
+      const descriptionField = document.getElementById(definition.descriptionId);
+      if (!codeField || !descriptionField) {
+        return;
+      }
+
+      codeField.addEventListener("input", () => syncCidDescriptionField(moduleKey));
+      codeField.addEventListener("change", () => syncCidDescriptionField(moduleKey, { normalizeCodeField: true }));
+      codeField.addEventListener("blur", () => syncCidDescriptionField(moduleKey, { normalizeCodeField: true }));
+      descriptionField.addEventListener("input", () => {
+        descriptionField.dataset.autoFilled = "false";
+        descriptionField.dataset.autoValue = "";
+      });
+
+      syncCidDescriptionField(moduleKey, { normalizeCodeField: true });
+    });
+  }
+
+  function resolveReportRegistration(identity = {}) {
+    const candidates = [
+      identity.workerRegistration,
+      identity.workerEnrollment,
+      identity.workerId,
+      valueOfRaw("reportWorkerRegistration"),
+      valueOfRaw("reportWorkerEnrollment"),
+      valueOfRaw("reportWorkerId"),
+      valueOfRaw("reportEnrollment"),
+      valueOfRaw("reportMatricula"),
+      valueOfRaw("workerMatricula")
+    ];
+
+    return candidates
+      .map((value) => normalizePdfTextValue(value))
+      .find((value) => !isNonInformativePdfValue(value)) || "";
+  }
+
+  function normalizeLaudoIdentityForPdf(identity = {}) {
+    return {
+      ...identity,
+      workerName: normalizePdfTextValue(identity.workerName) || "N\u00e3o informado",
+      workerCpf: normalizePdfTextValue(identity.workerCpf) || "N\u00e3o informado",
+      workerBirthDate: normalizePdfTextValue(identity.workerBirthDate) || "N\u00e3o informado",
+      reportDate: normalizePdfTextValue(identity.reportDate) || "N\u00e3o informado",
+      origin: normalizePdfTextValue(identity.origin) || inferOriginFromCurrentCase() || "outra",
+      company: normalizePdfTextValue(identity.company) || "N\u00e3o informado",
+      role: normalizePdfTextValue(identity.role) || "N\u00e3o informado",
+      sector: normalizePdfTextValue(identity.sector) || "N\u00e3o informado",
+      examiner: normalizePdfTextValue(identity.examiner) || "N\u00e3o informado",
+      examinerRegistry: normalizePdfTextValue(identity.examinerRegistry) || "N\u00e3o informado",
+      examinerSpecialty: normalizePdfTextValue(identity.examinerSpecialty) || "N\u00e3o informado",
+      unit: normalizePdfTextValue(identity.unit) || "N\u00e3o informado",
+      workerRegistration: resolveReportRegistration(identity)
+    };
+  }
+
+  function buildPdfDateToken(value) {
+    const raw = normalizePdfTextValue(value);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+      return raw.replace(/-/g, "");
+    }
+
+    const parsedDate = raw ? new Date(raw) : new Date();
+    const safeDate = Number.isNaN(parsedDate.getTime()) ? new Date() : parsedDate;
+    const year = safeDate.getFullYear();
+    const month = String(safeDate.getMonth() + 1).padStart(2, "0");
+    const day = String(safeDate.getDate()).padStart(2, "0");
+    return `${year}${month}${day}`;
+  }
+
+  function sanitizePdfFilePart(value, fallback = "NAO_INFORMADO") {
+    const baseValue = isNonInformativePdfValue(value) ? fallback : normalizePdfTextValue(value);
+    const normalized = baseValue
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^A-Za-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "")
+      .replace(/_+/g, "_")
+      .toUpperCase();
+    return normalized || fallback;
+  }
+
+  function buildPdfFileName(identity = {}) {
+    const normalizedIdentity = identity && typeof identity === "object"
+      ? identity
+      : { workerName: identity };
+    const safeIdentity = normalizeLaudoIdentityForPdf(normalizedIdentity);
+    const nameToken = sanitizePdfFilePart(safeIdentity.workerName, "TRABALHADOR");
+    const registrationToken = sanitizePdfFilePart(
+      resolveReportRegistration(safeIdentity)
+        || String(safeIdentity.workerCpf || "").replace(/\D+/g, "")
+        || "SEM_MATRICULA",
+      "SEM_MATRICULA"
+    );
+    const dateToken = buildPdfDateToken(safeIdentity.reportDate);
+    return `Laudo_PCD_${nameToken}_${registrationToken}_${dateToken}.pdf`;
+  }
+
+  function buildPdfPayload(identity, result, attachments = []) {
+    const safeIdentity = normalizeLaudoIdentityForPdf(identity);
+    return {
+      title: "LAUDO CARACTERIZADOR DE DEFICIENCIA",
+      moduleLabel: moduleConfigs[state.activeModule] ? toPresentationText(moduleConfigs[state.activeModule].title) : "Modulo nao especificado",
+      identity: safeIdentity,
+      result,
+      attachments: Array.isArray(attachments) ? attachments : [],
+      technicalBasis: toPresentationText(buildTechnicalBasisText(state.activeModule, result)) || "Nao informado",
+      generatedAt: new Date()
+    };
+  }
+
+  function getLaudoActionContext() {
+    const accountType = normalizeAccountType(state.sessionUser && state.sessionUser.accountType);
+    let message = "";
+
+    if (accountType === "demo" || state.demoModeEnabled) {
+      message = "O modo demonstracao permite apenas navegacao assistida e minuta visual. Conclusao documental, assinatura e validade juridica permanecem bloqueadas.";
+    } else if (accountType !== "doctor") {
+      message = "A conclusao do documento exige medico autenticado com CRM valido e responsabilidade tecnica assumida. Usuarios empresariais nao podem emitir ou assinar documentos.";
+    } else if (!state.sessionUser || !state.sessionUser.crmValidated) {
+      message = "A emissao do laudo permanece bloqueada ate a validacao administrativa do CRM no painel do sistema.";
+    } else if (!state.lastResult || state.lastResult.status !== "eligible") {
+      message = "O laudo final so pode ser emitido quando o caso estiver classificado como enquadrado.";
+    }
+
+    if (message) {
+      setPdfActionStatus(message);
+      window.alert(message);
+      return null;
+    }
+
+    return {
+      identity: normalizeLaudoIdentityForPdf(collectReportIdentity()),
+      printFiles: collectPrintPackageFiles()
+    };
+  }
+
+  async function loadImage(src) {
+    return new Promise((resolve, reject) => {
+      const candidates = buildImageSourceCandidates(src);
+      let currentIndex = 0;
+
+      const tryLoad = () => {
+        if (currentIndex >= candidates.length) {
+          reject(new Error(`Falha ao carregar a imagem-base do laudo: ${src}`));
+          return;
+        }
+
+        const candidate = candidates[currentIndex];
+        const image = new Image();
+        if (/^https?:/i.test(candidate)) {
+          image.crossOrigin = "anonymous";
+        }
+        image.decoding = "async";
+        image.onload = () => resolve(image);
+        image.onerror = () => {
+          currentIndex += 1;
+          tryLoad();
+        };
+        image.src = candidate;
+      };
+
+      tryLoad();
+    });
+  }
+
+  async function buildOfficialLaudoCanvas(payload = {}) {
+    const image = await loadImage(OFFICIAL_LAUDO_TEMPLATE.imagePath);
+    const width = Number(image.naturalWidth || image.width || 0);
+    const height = Number(image.naturalHeight || image.height || 0);
+    if (!width || !height) {
+      throw new Error("A imagem-base do laudo retornou dimensoes invalidas.");
+    }
+
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      throw new Error("Nao foi possivel inicializar a area grafica para montar o laudo.");
+    }
+
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+    applyTemplateOverlay(ctx, canvas.width, canvas.height, payload);
+    return canvas;
+  }
+
+  async function buildLaudoPdfBlob(payload = {}) {
+    const canvas = await buildOfficialLaudoCanvas(payload);
+    let dataUrl = "";
+
+    try {
+      dataUrl = canvas.toDataURL("image/jpeg", 0.95);
+    } catch (error) {
+      throw new Error("Falha ao converter o laudo em imagem para gerar o PDF.");
+    }
+
+    if (!/^data:image\/jpeg;base64,/i.test(dataUrl)) {
+      throw new Error("O conteudo do laudo foi gerado em formato invalido para PDF.");
+    }
+
+    const blob = createPdfBlobFromJpegDataUrl(
+      dataUrl,
+      canvas.width,
+      canvas.height,
+      OFFICIAL_LAUDO_TEMPLATE.pdfWidth,
+      OFFICIAL_LAUDO_TEMPLATE.pdfHeight
+    );
+
+    if (!(blob instanceof Blob) || !blob.size) {
+      throw new Error("O PDF do laudo foi gerado sem conteudo.");
+    }
+
+    return blob;
+  }
+
+  function applyTemplateOverlay(ctx, width, height, payload) {
+    const safePayload = payload && typeof payload === "object" ? payload : {};
+    const safeIdentity = normalizeLaudoIdentityForPdf(safePayload.identity || {});
+    const template = OFFICIAL_LAUDO_TEMPLATE;
+    const color = "#111111";
+    const workerName = safeIdentity.workerName;
+    const cpf = safeIdentity.workerCpf;
+    const cid = formatarCID(resolveCurrentCid(), resolveCurrentCidDescription());
+    const origin = safeIdentity.origin || inferOriginFromCurrentCase() || "outra";
+    const description = normalizePdfTextValue(buildOfficialDescriptionText({ ...safePayload, identity: safeIdentity })) || "N\u00e3o informado";
+    const limitations = normalizePdfTextValue(buildOfficialLimitationsText({ ...safePayload, identity: safeIdentity })) || "N\u00e3o informado";
+    const professional = safeIdentity.examiner;
+    const registry = safeIdentity.examinerRegistry;
+    const signatureLine = joinSupportNotes([professional, registry]) || "N\u00e3o informado";
+    const date = formatDateForReport(safeIdentity.reportDate) || "N\u00e3o informado";
+
+    drawBoxText(ctx, workerName, template.nameField.x, template.nameField.y, template.nameField.width, template.nameField.paddingY, template.nameField.font, color);
+    drawBoxText(ctx, cpf, template.cpfField.x, template.cpfField.y, template.cpfField.width, template.cpfField.paddingY, template.cpfField.font, color);
+    drawBoxText(ctx, cid, template.cidField.x, template.cidField.y, template.cidField.width, template.cidField.paddingY, template.cidField.font, color);
+
+    drawOriginMark(ctx, origin, color);
+
+    drawParagraphAutoFit(
+      ctx,
+      description,
+      template.descriptionRect.x,
+      template.descriptionRect.y,
+      template.descriptionRect.width,
+      template.descriptionRect.height,
+      color,
+      template.descriptionRect.fontSizes,
+      "Arial"
+    );
+    drawParagraphAutoFit(
+      ctx,
+      limitations,
+      template.limitationsRect.x,
+      template.limitationsRect.y,
+      template.limitationsRect.width,
+      template.limitationsRect.height,
+      color,
+      template.limitationsRect.fontSizes,
+      "Arial"
+    );
+
+    markSectionByModule(ctx, state.activeModule, color, safePayload);
+    drawTechnicalDetailByModule(ctx, state.activeModule, safePayload, color);
+
+    drawBoxText(ctx, signatureLine, template.signatureField.x, template.signatureField.y, template.signatureField.width, template.signatureField.paddingY, template.signatureField.font, color);
+    drawBoxText(ctx, date, template.dateField.x, template.dateField.y, template.dateField.width, template.dateField.paddingY, template.dateField.font, color);
+  }
+
+  async function handlePdfSave() {
+    const context = getLaudoActionContext();
+    if (!context) {
+      return;
+    }
+
+    setPdfActionStatus("Gerando PDF do laudo para salvar...");
+
+    try {
+      const pdfPayload = buildPdfPayload(context.identity, state.lastResult, []);
+      const blob = await buildLaudoPdfBlob(pdfPayload);
+      if (!(blob instanceof Blob) || !blob.size) {
+        throw new Error("O arquivo PDF foi gerado vazio.");
+      }
+
+      const fileName = buildPdfFileName(context.identity);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1200);
+
+      await registerLaudoUsageOnce(context.identity);
+      setPdfActionStatus("PDF do laudo salvo com sucesso.");
+    } catch (error) {
+      console.error(error);
+      const message = `Nao foi possivel salvar o PDF do laudo neste momento.${error && error.message ? `\n\nDetalhe tecnico: ${toPresentationText(error.message)}` : ""}`;
+      setPdfActionStatus(message.replace(/\n+/g, " "));
+      window.alert(message);
+    }
+  }
+
+  bindCidDescriptionFields();
 };
 
 if (document.readyState === "loading") {
