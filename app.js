@@ -16863,7 +16863,7 @@ const startPcdDigital = () => {
 
     setHtml("#professionalContactCard", `
       <div class="professional-contact-card">
-        <img class="professional-contact-avatar" src="img/foto.png" alt="Foto profissional em fundo claro, com jaleco branco e postura confiante.">
+            <img class="professional-contact-avatar" src="/img/foto.png" alt="Foto profissional em fundo claro, com jaleco branco e postura confiante.">
         <div class="professional-contact-body">
           <span class="section-step">Contato direto</span>
           <h3>Atendimento comercial profissional</h3>
