@@ -2138,6 +2138,12 @@ function extractCidDescriptionFromSearchHtml(html, code) {
     }
   }
 
+  const fallbackMatch = extractCidResultsFromSearchHtml(html, 24)
+    .find((item) => item && normalizeCidCode(item.code) === normalizedCode);
+  if (fallbackMatch && fallbackMatch.description) {
+    return normalizeText(fallbackMatch.description);
+  }
+
   return "";
 }
 

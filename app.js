@@ -1725,26 +1725,45 @@ const startPcdDigital = () => {
 
   function buildPhysicalMissingItems(context = {}) {
     const missing = [];
+    const functionalCount = Number(context.functionalCount || 0);
+    const objectiveEvidenceCount = Number(context.objectiveEvidenceCount || 0);
+    const hasFunctionalEvidence = functionalCount > 0
+      || Boolean(context.functionalLossSuspected)
+      || objectiveEvidenceCount > 0
+      || Boolean(context.impactGrade)
+      || Boolean(context.inferredImpactGrade);
     if (!context.conditionType) {
       missing.push("a situação física principal");
     }
     if (context.conditionType && context.conditionType !== "amputação" && !context.segmentReady) {
       missing.push("o segmento corporal acometido");
     }
-    if (!context.impactGrade && !context.inferredImpactGrade) {
+    if (!context.impactGrade && !context.inferredImpactGrade && !hasFunctionalEvidence) {
       missing.push("o impacto funcional");
     }
-    if (!context.functionalCount) {
+    if (!functionalCount && !context.functionalLossSuspected && !objectiveEvidenceCount) {
       missing.push("as limitações funcionais observadas");
     }
     if (context.conditionType === "amputação" && !context.scope) {
       missing.push("a região anatômica da amputação");
     }
-    if (context.conditionType === "limitação articular" && !context.movementFocus) {
+    if (
+      context.conditionType === "limitação articular"
+      && !context.movementFocus
+      && !context.mobility
+      && functionalCount < 2
+      && !objectiveEvidenceCount
+    ) {
       missing.push("o movimento principal comprometido");
     }
-    if (context.conditionType === "lesão neurológica" && !context.strengthGrade && !context.mobility) {
-      missing.push("a graduação de força muscular ou a mobilidade");
+    if (
+      context.conditionType === "lesão neurológica"
+      && !context.strengthGrade
+      && !context.mobility
+      && !functionalCount
+      && !context.functionalLossSuspected
+    ) {
+      missing.push("a graduação de força muscular, a mobilidade ou as limitações funcionais observadas");
     }
     return missing;
   }
@@ -1760,19 +1779,25 @@ const startPcdDigital = () => {
       || ["0", "1", "2"].includes(context.strengthGrade)
       || context.mobility === "grave"
     );
-
-    if (markerCount >= 2 && severeObjectiveLoss) {
-      return "grave";
-    }
-
     const moderateObjectiveLoss = Boolean(
       context.relevantAnatomicalLoss
       || ["3", "4"].includes(context.strengthGrade)
       || ["moderada", "grave"].includes(context.mobility || "")
       || context.functionalLossSuspected
+      || (context.conditionType === "limitação articular"
+        && context.segmentReady
+        && (Boolean(context.movementFocus) || markerCount >= 1))
     );
 
-    if (markerCount >= 1 && moderateObjectiveLoss) {
+    if ((markerCount >= 2 && severeObjectiveLoss) || markerCount >= 4) {
+      return "grave";
+    }
+
+    if (
+      (markerCount >= 1 && moderateObjectiveLoss)
+      || markerCount >= 2
+      || (context.conditionType === "amputação" && context.amputationRelevant)
+    ) {
       return "moderado";
     }
 
@@ -2290,22 +2315,48 @@ const startPcdDigital = () => {
     const significantStrengthLoss = ["0", "1", "2", "3"].includes(strengthGrade);
     const borderlineStrengthLoss = strengthGrade === "4";
     const relevantMobilityLoss = ["moderada", "grave"].includes(mobility);
-    const articularCriterion = Boolean(movementFocus) && relevantMobilityLoss;
     const associatedNeurologicalEvidence = relevantMobilityLoss || relevantAnatomicalLoss || functionalLossSuspected;
     const strengthCriterion = significantStrengthLoss || (borderlineStrengthLoss && associatedNeurologicalEvidence);
     const amputationDetail = collectAmputationDetail();
     const amputationRelevant = evaluateAmputationRelevance(scope, amputationDetail, amputationLevel);
+    const segmentReady = conditionType === "amputação" ? Boolean(scope) : Boolean(segment);
+    const objectiveEvidenceCount = [
+      amputationRelevant,
+      relevantAnatomicalLoss,
+      strengthCriterion,
+      relevantMobilityLoss,
+      Boolean(movementFocus),
+      functionalLossSuspected
+    ].filter(Boolean).length;
     const impactGrade = inferPhysicalImpactGrade({
       impactGrade: rawImpactGrade,
+      conditionType,
+      segmentReady,
       functionalCount: functionalMarkers.length,
       relevantAnatomicalLoss,
       strengthGrade,
       mobility,
+      movementFocus,
       functionalLossSuspected,
       amputationRelevant
     });
     const impactWasInferred = !rawImpactGrade && Boolean(impactGrade);
     const moderateOrSevereImpact = ["moderado", "grave"].includes(impactGrade);
+    const articularCriterion = Boolean(segment) && (
+      Boolean(movementFocus)
+      || relevantMobilityLoss
+      || functionalMarkers.length >= 2
+      || objectiveEvidenceCount >= 2
+    );
+    const neuroCriterion = strengthCriterion
+      || relevantMobilityLoss
+      || functionalMarkers.length >= 2
+      || objectiveEvidenceCount >= 2;
+    const generalFunctionalCriterion = relevantMobilityLoss
+      || relevantAnatomicalLoss
+      || functionalLossSuspected
+      || functionalMarkers.length >= 2
+      || objectiveEvidenceCount >= 2;
     if (impactWasInferred) {
       const impactField = document.getElementById("physicalImpactGrade");
       if (impactField && !impactField.value) {
@@ -2315,12 +2366,14 @@ const startPcdDigital = () => {
 
     const missingItems = buildPhysicalMissingItems({
       conditionType,
-      segmentReady: conditionType === "amputação" ? Boolean(scope) : Boolean(segment),
+      segmentReady,
       laterality,
       requiresLaterality: false,
       impactGrade: rawImpactGrade,
       inferredImpactGrade: impactGrade,
       functionalCount: functionalMarkers.length,
+      functionalLossSuspected,
+      objectiveEvidenceCount,
       scope,
       movementFocus,
       strengthGrade,
@@ -2359,10 +2412,10 @@ const startPcdDigital = () => {
     const scenarioEligible = {
       amputação: amputationRelevant && moderateOrSevereImpact,
       "limitação articular": articularCriterion && moderateOrSevereImpact,
-      "lesão neurológica": (strengthCriterion || relevantMobilityLoss) && moderateOrSevereImpact,
-      deformidade: (relevantMobilityLoss || relevantAnatomicalLoss || functionalLossSuspected) && moderateOrSevereImpact,
-      "sequela traumática": (relevantAnatomicalLoss || strengthCriterion || relevantMobilityLoss || functionalLossSuspected) && moderateOrSevereImpact,
-      "outras alterações físicas permanentes": (relevantAnatomicalLoss || strengthCriterion || relevantMobilityLoss || functionalLossSuspected) && moderateOrSevereImpact
+      "lesão neurológica": neuroCriterion && moderateOrSevereImpact,
+      deformidade: generalFunctionalCriterion && moderateOrSevereImpact,
+      "sequela traumática": (generalFunctionalCriterion || strengthCriterion) && moderateOrSevereImpact,
+      "outras alterações físicas permanentes": (generalFunctionalCriterion || strengthCriterion) && moderateOrSevereImpact
     };
 
     const docNote = buildPhysicalDocumentationNote({
@@ -20349,9 +20402,29 @@ const startPcdDigital = () => {
       items.forEach((item) => {
         CID_DESCRIPTION_RUNTIME_CACHE.set(item.code, item.description);
       });
+      if (!items.length) {
+        const normalizedCode = normalizeCidCode(normalizedQuery);
+        if (isEligibleCidLookupCode(normalizedCode)) {
+          const description = await fetchCidDescriptionFromApi(normalizedCode);
+          if (description) {
+            const fallbackItems = [{ code: normalizedCode, description }];
+            CID_DESCRIPTION_SEARCH_CACHE.set(cacheKey, fallbackItems);
+            return fallbackItems;
+          }
+        }
+      }
       CID_DESCRIPTION_SEARCH_CACHE.set(cacheKey, items);
       return items;
     } catch (error) {
+      const normalizedCode = normalizeCidCode(normalizedQuery);
+      if (isEligibleCidLookupCode(normalizedCode)) {
+        const description = await fetchCidDescriptionFromApi(normalizedCode);
+        if (description) {
+          const fallbackItems = [{ code: normalizedCode, description }];
+          CID_DESCRIPTION_SEARCH_CACHE.set(cacheKey, fallbackItems);
+          return fallbackItems;
+        }
+      }
       return [];
     }
   }
@@ -20571,6 +20644,7 @@ const startPcdDigital = () => {
     }
 
     if (!nextDescription && parsed.code) {
+      scheduleCidSuggestionLookup(moduleKey, parsed.code);
       scheduleCidDescriptionLookup(moduleKey, parsed.code);
     }
   }
@@ -20628,6 +20702,7 @@ const startPcdDigital = () => {
       const definition = getCidFieldDefinition(moduleKey);
       if (definition && fieldId === definition.codeId) {
         syncCidDescriptionField(moduleKey, { normalizeCodeField: true });
+        scheduleCidSuggestionLookup(moduleKey, event.target.value);
       }
     };
 
