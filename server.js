@@ -150,8 +150,11 @@ const STATIC_IMAGE_ALIASES = {
   "/foto.png": ["foto.png", "img/foto.png"]
 };
 const MAX_PAYMENT_HISTORY_ITEMS = 40;
+const CID_LOOKUP_HOST = "www.codigocid.com.br";
+const CID_LOOKUP_CACHE_TTL_MS = 1000 * 60 * 60 * 24 * 7;
 
 const sessions = new Map();
+const cidLookupCache = new Map();
 
 ensureDataStore();
 
@@ -187,6 +190,44 @@ const server = http.createServer(async (req, res) => {
         totalUsers: users.length,
         totalCompanies: users.filter((item) => item.role === "buyer").length,
         mercadopagoConfigured: Boolean(MP_ACCESS_TOKEN)
+      });
+    }
+
+    if (pathname === "/api/cid/lookup" && req.method === "GET") {
+      const code = normalizeCidCode(requestUrl.searchParams.get("code"));
+      if (!code) {
+        return sendJson(res, 400, { message: "Informe um CID valido para consulta." });
+      }
+
+      let result;
+      try {
+        result = await lookupCidDescriptionByCode(code);
+      } catch (error) {
+        console.error("[cid-lookup] Falha ao consultar CID externo:", error);
+        return sendJson(res, 502, {
+          code,
+          found: false,
+          description: "",
+          sourceUrl: buildCidLookupUrl(code),
+          message: "Nao foi possivel consultar a descricao do CID neste momento."
+        });
+      }
+
+      if (!result.found) {
+        return sendJson(res, 404, {
+          code,
+          found: false,
+          description: "",
+          sourceUrl: result.sourceUrl || buildCidLookupUrl(code)
+        });
+      }
+
+      return sendJson(res, 200, {
+        code,
+        found: true,
+        description: result.description,
+        sourceUrl: result.sourceUrl || buildCidLookupUrl(code),
+        cached: Boolean(result.cached)
       });
     }
 
@@ -1932,6 +1973,145 @@ function verifyPassword(password, user) {
 
 function normalizeText(value) {
   return String(value || "").trim();
+}
+
+function normalizeCidCode(value) {
+  return String(value || "")
+    .trim()
+    .toUpperCase()
+    .replace(",", ".")
+    .replace(/\s+/g, "");
+}
+
+function decodeHtmlEntities(value) {
+  return String(value || "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&quot;/gi, "\"")
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&#(\d+);/g, (_, codePoint) => String.fromCodePoint(Number(codePoint) || 0))
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCodePoint(parseInt(hex, 16) || 0));
+}
+
+function stripHtmlTags(value) {
+  return String(value || "").replace(/<[^>]*>/g, " ");
+}
+
+function buildCidLookupUrl(code) {
+  return `https://${CID_LOOKUP_HOST}/busca?q=${encodeURIComponent(normalizeCidCode(code))}`;
+}
+
+function isCidLookupCacheFresh(entry) {
+  return Boolean(entry && entry.storedAt && (Date.now() - entry.storedAt) < CID_LOOKUP_CACHE_TTL_MS);
+}
+
+function extractCidDescriptionFromSearchHtml(html, code) {
+  const normalizedCode = normalizeCidCode(code);
+  if (!html || !normalizedCode) {
+    return "";
+  }
+
+  const resultPattern = /<span[^>]*>\s*CID\s*(?:<!--\s*-->)?\s*([A-Z0-9.,]+)\s*<\/span>[\s\S]*?<p[^>]*>([\s\S]*?)<\/p>/gi;
+  let match;
+  while ((match = resultPattern.exec(String(html))) !== null) {
+    const foundCode = normalizeCidCode(decodeHtmlEntities(stripHtmlTags(match[1])));
+    if (foundCode !== normalizedCode) {
+      continue;
+    }
+
+    const description = normalizeText(
+      decodeHtmlEntities(stripHtmlTags(match[2])).replace(/\s+/g, " ")
+    );
+    if (description) {
+      return description;
+    }
+  }
+
+  return "";
+}
+
+function fetchRemoteText(urlString) {
+  return new Promise((resolve, reject) => {
+    const target = new URL(urlString);
+    const request = https.request({
+      protocol: target.protocol,
+      hostname: target.hostname,
+      path: `${target.pathname}${target.search}`,
+      method: "GET",
+      headers: {
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0 Safari/537.36"
+      },
+      timeout: 10000
+    }, (response) => {
+      if (
+        response.statusCode >= 300
+        && response.statusCode < 400
+        && response.headers.location
+      ) {
+        response.resume();
+        resolve(fetchRemoteText(new URL(response.headers.location, target).toString()));
+        return;
+      }
+
+      let raw = "";
+      response.setEncoding("utf8");
+      response.on("data", (chunk) => {
+        raw += chunk;
+      });
+      response.on("end", () => {
+        if (response.statusCode >= 200 && response.statusCode < 300) {
+          resolve(raw);
+          return;
+        }
+        reject(new Error(`Consulta externa de CID retornou status ${response.statusCode || 0}.`));
+      });
+    });
+
+    request.on("timeout", () => {
+      request.destroy(new Error("Tempo esgotado na consulta externa do CID."));
+    });
+    request.on("error", reject);
+    request.end();
+  });
+}
+
+async function lookupCidDescriptionByCode(code) {
+  const normalizedCode = normalizeCidCode(code);
+  const sourceUrl = buildCidLookupUrl(normalizedCode);
+  if (!normalizedCode) {
+    return { found: false, description: "", sourceUrl, cached: false };
+  }
+
+  const cachedEntry = cidLookupCache.get(normalizedCode);
+  if (isCidLookupCacheFresh(cachedEntry)) {
+    return {
+      found: Boolean(cachedEntry.found),
+      description: cachedEntry.description || "",
+      sourceUrl: cachedEntry.sourceUrl || sourceUrl,
+      cached: true
+    };
+  }
+
+  const html = await fetchRemoteText(sourceUrl);
+  const description = extractCidDescriptionFromSearchHtml(html, normalizedCode);
+  const nextEntry = {
+    found: Boolean(description),
+    description,
+    sourceUrl,
+    storedAt: Date.now()
+  };
+  cidLookupCache.set(normalizedCode, nextEntry);
+
+  return {
+    found: nextEntry.found,
+    description: nextEntry.description,
+    sourceUrl,
+    cached: false
+  };
 }
 
 function normalizeEmail(value) {

@@ -20012,13 +20012,22 @@ const startPcdDigital = () => {
     "F33.2": "Transtorno depressivo recorrente, epis\u00f3dio atual grave sem sintomas psic\u00f3ticos",
     "F79": "Defici\u00eancia intelectual n\u00e3o especificada",
     "H54.0": "Cegueira em ambos os olhos",
-    "H54.4": "Cegueira monocular",
+    "H54.4": "Cegueira em um olho",
     "H90.3": "Perda auditiva neurossensorial bilateral",
-    "M21.7": "Desigualdade dos membros inferiores",
+    "M21.7": "Desigualdade (adquirida) do comprimento dos membros",
     "M54.5": "Dor lombar baixa",
     "M79.7": "Fibromialgia",
-    "S68.0": "Amputa\u00e7\u00e3o traum\u00e1tica do polegar"
+    "S68.0": "Amputa\u00e7\u00e3o traum\u00e1tica do polegar (completa) (parcial)"
   });
+
+  const CID_DESCRIPTION_RUNTIME_CACHE = new Map(
+    Object.entries(CID_DESCRIPTION_MAP_EXTENDED).map(([code, description]) => [
+      normalizeCidCode(code),
+      normalizePdfTextValue(description)
+    ])
+  );
+  const CID_DESCRIPTION_LOOKUP_REQUESTS = new Map();
+  const CID_DESCRIPTION_LOOKUP_TIMERS = new Map();
 
   function normalizePdfTextValue(value) {
     return normalizeSpacing(String(value || ""));
@@ -20071,9 +20080,144 @@ const startPcdDigital = () => {
 
   function lookupCidDescription(code) {
     const normalizedCode = normalizeCidCode(code);
-    return normalizedCode && CID_DESCRIPTION_MAP_EXTENDED[normalizedCode]
-      ? normalizePdfTextValue(CID_DESCRIPTION_MAP_EXTENDED[normalizedCode])
-      : "";
+    return normalizedCode ? (CID_DESCRIPTION_RUNTIME_CACHE.get(normalizedCode) || "") : "";
+  }
+
+  function isEligibleCidLookupCode(code) {
+    return /^[A-Z]\d{2}(?:\.[A-Z0-9]{1,4})?$/i.test(normalizeCidCode(code));
+  }
+
+  async function fetchCidDescriptionFromApi(code) {
+    const normalizedCode = normalizeCidCode(code);
+    if (!isEligibleCidLookupCode(normalizedCode)) {
+      return "";
+    }
+
+    const cached = lookupCidDescription(normalizedCode);
+    if (cached) {
+      return cached;
+    }
+
+    if (CID_DESCRIPTION_LOOKUP_REQUESTS.has(normalizedCode)) {
+      return CID_DESCRIPTION_LOOKUP_REQUESTS.get(normalizedCode);
+    }
+
+    const request = (async () => {
+      try {
+        const sessionToken = getApiSessionToken();
+        const headers = {};
+        if (sessionToken) {
+          headers.Authorization = `Bearer ${sessionToken}`;
+        }
+
+        const response = await fetch(
+          buildApiUrl(`/api/cid/lookup?code=${encodeURIComponent(normalizedCode)}`),
+          {
+            method: "GET",
+            headers,
+            credentials: "include"
+          }
+        );
+        if (!response.ok) {
+          return "";
+        }
+
+        const payload = await response.json().catch(() => ({}));
+        const description = normalizePdfTextValue(payload.description || "");
+        if (description) {
+          CID_DESCRIPTION_RUNTIME_CACHE.set(normalizedCode, description);
+        }
+        return description;
+      } catch (error) {
+        console.error("Falha ao consultar descricao automatica do CID.", error);
+        return "";
+      } finally {
+        CID_DESCRIPTION_LOOKUP_REQUESTS.delete(normalizedCode);
+      }
+    })();
+
+    CID_DESCRIPTION_LOOKUP_REQUESTS.set(normalizedCode, request);
+    return request;
+  }
+
+  function scheduleCidDescriptionLookup(moduleKey, code) {
+    const definition = getCidFieldDefinition(moduleKey);
+    if (!definition) {
+      return;
+    }
+
+    const codeField = document.getElementById(definition.codeId);
+    const descriptionField = document.getElementById(definition.descriptionId);
+    const normalizedCode = normalizeCidCode(code);
+    if (
+      !codeField
+      || !descriptionField
+      || !isEligibleCidLookupCode(normalizedCode)
+      || lookupCidDescription(normalizedCode)
+    ) {
+      return;
+    }
+
+    const timerKey = definition.codeId;
+    if (CID_DESCRIPTION_LOOKUP_TIMERS.has(timerKey)) {
+      window.clearTimeout(CID_DESCRIPTION_LOOKUP_TIMERS.get(timerKey));
+    }
+
+    CID_DESCRIPTION_LOOKUP_TIMERS.set(timerKey, window.setTimeout(async () => {
+      CID_DESCRIPTION_LOOKUP_TIMERS.delete(timerKey);
+
+      const currentCode = parseCidEntry(codeField.value).code;
+      if (normalizeCidCode(currentCode) !== normalizedCode) {
+        return;
+      }
+
+      const resolvedDescription = await fetchCidDescriptionFromApi(normalizedCode);
+      if (!resolvedDescription) {
+        return;
+      }
+
+      const latestCode = parseCidEntry(codeField.value).code;
+      if (normalizeCidCode(latestCode) !== normalizedCode) {
+        return;
+      }
+
+      if (shouldOverwriteCidDescriptionField(descriptionField, resolvedDescription)) {
+        descriptionField.value = resolvedDescription;
+        descriptionField.dataset.autoFilled = "true";
+        descriptionField.dataset.autoValue = resolvedDescription;
+      }
+    }, 260));
+  }
+
+  async function ensureCidDescriptionResolvedForModule(moduleKey = state.activeModule) {
+    const definition = getCidFieldDefinition(moduleKey);
+    if (!definition) {
+      return "";
+    }
+
+    const codeField = document.getElementById(definition.codeId);
+    const descriptionField = document.getElementById(definition.descriptionId);
+    const parsed = parseCidEntry(codeField ? codeField.value : valueOfRaw(definition.codeId));
+    const currentDescription = normalizePdfTextValue(
+      descriptionField ? descriptionField.value : valueOfRaw(definition.descriptionId)
+    ) || parsed.description || lookupCidDescription(parsed.code);
+
+    if (!parsed.code || currentDescription) {
+      return currentDescription;
+    }
+
+    const resolvedDescription = await fetchCidDescriptionFromApi(parsed.code);
+    if (
+      resolvedDescription
+      && descriptionField
+      && shouldOverwriteCidDescriptionField(descriptionField, resolvedDescription)
+    ) {
+      descriptionField.value = resolvedDescription;
+      descriptionField.dataset.autoFilled = "true";
+      descriptionField.dataset.autoValue = resolvedDescription;
+    }
+
+    return resolvedDescription || currentDescription;
   }
 
   function resolveCurrentCid() {
@@ -20157,6 +20301,10 @@ const startPcdDigital = () => {
       descriptionField.value = "";
       descriptionField.dataset.autoFilled = "false";
       descriptionField.dataset.autoValue = "";
+    }
+
+    if (!nextDescription && parsed.code) {
+      scheduleCidDescriptionLookup(moduleKey, parsed.code);
     }
   }
 
@@ -20482,6 +20630,7 @@ const startPcdDigital = () => {
     setPdfActionStatus("Gerando PDF do laudo para salvar...");
 
     try {
+      await ensureCidDescriptionResolvedForModule();
       const pdfPayload = buildPdfPayload(context.identity, state.lastResult, []);
       const blob = await buildLaudoPdfBlob(pdfPayload);
       if (!(blob instanceof Blob) || !blob.size) {
