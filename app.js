@@ -1588,7 +1588,7 @@ const startPcdDigital = () => {
   function updatePhysicalFieldVisibility() {
     const choice = refs.physicalConditionType ? refs.physicalConditionType.value : "";
     const scope = valueOf("physicalAmputationScope");
-    const segment = valueOf("physicalSegment");
+    const resolvedSegment = resolvePhysicalSegment();
     const isAmputation = choice === "Amputação";
     const movementDriven = ["Limitação articular", "Lesão neurológica", "Sequela traumática", "Outras alterações físicas permanentes", "Deformidade"].includes(choice);
     const showStrength = ["Lesão neurológica", "Sequela traumática", "Outras alterações físicas permanentes"].includes(choice);
@@ -1625,6 +1625,21 @@ const startPcdDigital = () => {
       }
       if (anatomicalField && !anatomicalField.value) {
         anatomicalField.value = "relevante";
+      }
+    }
+
+    const lateralityField = document.getElementById("physicalLaterality");
+    if (lateralityField) {
+      if (resolvedSegment === "coluna" && !lateralityField.value) {
+        lateralityField.value = "axial";
+        lateralityField.dataset.autoAxial = "true";
+      } else if (
+        resolvedSegment !== "coluna"
+        && lateralityField.dataset.autoAxial === "true"
+        && lateralityField.value === "axial"
+      ) {
+        lateralityField.value = "";
+        lateralityField.dataset.autoAxial = "false";
       }
     }
 
@@ -1702,6 +1717,39 @@ const startPcdDigital = () => {
       return AMPUTATION_SCOPE_META[scope] ? AMPUTATION_SCOPE_META[scope].segment : "";
     }
     return valueOf("physicalSegment");
+  }
+
+  function resolveEffectivePhysicalLaterality() {
+    return valueOf("physicalLaterality") || (resolvePhysicalSegment() === "coluna" ? "axial" : "");
+  }
+
+  function buildPhysicalMissingItems(context = {}) {
+    const missing = [];
+    if (!context.conditionType) {
+      missing.push("a situação física principal");
+    }
+    if (context.conditionType && context.conditionType !== "amputação" && !context.segmentReady) {
+      missing.push("o segmento corporal acometido");
+    }
+    if (context.requiresLaterality && !context.laterality) {
+      missing.push("a lateralidade");
+    }
+    if (!context.impactGrade) {
+      missing.push("o impacto funcional");
+    }
+    if (!context.functionalCount) {
+      missing.push("as limitações funcionais observadas");
+    }
+    if (context.conditionType === "amputação" && !context.scope) {
+      missing.push("a região anatômica da amputação");
+    }
+    if (context.conditionType === "limitação articular" && !context.movementFocus) {
+      missing.push("o movimento principal comprometido");
+    }
+    if (context.conditionType === "lesão neurológica" && !context.strengthGrade && !context.mobility) {
+      missing.push("a graduação de força muscular ou a mobilidade");
+    }
+    return missing;
   }
 
   function populateMovementFocusOptions(segment) {
@@ -2197,7 +2245,7 @@ const startPcdDigital = () => {
     const conditionType = valueOf("physicalConditionType");
     const segment = resolvePhysicalSegment();
     const scope = valueOf("physicalAmputationScope");
-    const laterality = normalizedText("physicalLaterality");
+    const laterality = resolveEffectivePhysicalLaterality();
     const permanent = valueOf("physicalPermanent");
     const cid = normalizedText("physicalCid");
     const clinicalBasis = normalizedText("physicalClinicalBasis");
@@ -2210,27 +2258,35 @@ const startPcdDigital = () => {
     const mobility = valueOf("physicalMobility");
     const impactGrade = valueOf("physicalImpactGrade");
     const functionalMarkers = checkedLabels("physicalFunctionItem");
-
-    if (!conditionType || !laterality || !impactGrade || !functionalMarkers.length) {
-      return reviewResult("Selecione a situação física principal, lateralidade e as limitações funcionais observadas.");
-    }
-
-    if (conditionType === "amputação" && !scope) {
-      return reviewResult("Na amputação, é necessário selecionar a região anatômica acometida.");
-    }
-
-    if (conditionType !== "amputação" && !segment) {
-      return reviewResult("Selecione o segmento corporal acometido para o módulo físico.");
-    }
-
+    const functionalLossSuspected = checked("physicalFunctionalLossSuspected");
+    const moderateOrSevereImpact = ["moderado", "grave"].includes(impactGrade);
     const relevantAnatomicalLoss = ["parcial", "relevante"].includes(anatomicalLoss);
     const significantStrengthLoss = ["0", "1", "2", "3"].includes(strengthGrade);
+    const borderlineStrengthLoss = strengthGrade === "4";
     const relevantMobilityLoss = ["moderada", "grave"].includes(mobility);
-    const moderateOrSevereImpact = ["moderado", "grave"].includes(impactGrade);
+    const articularCriterion = Boolean(movementFocus) && relevantMobilityLoss;
+    const associatedNeurologicalEvidence = relevantMobilityLoss || relevantAnatomicalLoss || functionalLossSuspected;
+    const strengthCriterion = significantStrengthLoss || (borderlineStrengthLoss && associatedNeurologicalEvidence);
     const amputationDetail = collectAmputationDetail();
     const amputationRelevant = evaluateAmputationRelevance(scope, amputationDetail, amputationLevel);
+    const requiresLaterality = segment !== "coluna";
+
+    const missingItems = buildPhysicalMissingItems({
+      conditionType,
+      segmentReady: conditionType === "amputação" ? Boolean(scope) : Boolean(segment),
+      laterality,
+      requiresLaterality,
+      impactGrade,
+      functionalCount: functionalMarkers.length,
+      scope,
+      movementFocus,
+      strengthGrade,
+      mobility
+    });
+
     const facts = [
       `Condição principal: ${capitalize(conditionType)}`,
+      `Segmento funcional: ${conditionType === "amputação" ? composeAmputationFinding(scope, laterality, amputationDetail, amputationLevel) : composeSegment(segment, laterality)}`,
       `Condição permanente: ${translateYesNo(permanent)}`,
       `Impacto funcional: ${capitalize(impactGrade)}`,
       `Perda anatômica: ${capitalize(anatomicalLoss || (conditionType === "amputação" ? "relevante" : "não informada"))}`,
@@ -2239,17 +2295,30 @@ const startPcdDigital = () => {
       `Mobilidade: ${capitalize(mobility || "não informada")}`
     ];
 
+    if (missingItems.length) {
+      return reviewResult(`Para concluir o enquadramento físico, informe ${joinList(missingItems)}.`, facts, buildPhysicalDocumentationNote({
+        conditionType,
+        scope,
+        supportDocs,
+        segment,
+        movementFocus,
+        strengthGrade,
+        mobility,
+        requiresLaterality
+      }));
+    }
+
     if (permanent !== "sim") {
       return reviewResult("Há repercussão funcional, porém é necessária confirmação do caráter permanente da alteração.", facts);
     }
 
     const scenarioEligible = {
       amputação: amputationRelevant && moderateOrSevereImpact,
-      "limitação articular": relevantMobilityLoss && moderateOrSevereImpact && Boolean(movementFocus),
-      "lesão neurológica": (significantStrengthLoss || relevantMobilityLoss) && moderateOrSevereImpact,
-      deformidade: (relevantMobilityLoss || relevantAnatomicalLoss) && moderateOrSevereImpact,
-      "sequela traumática": (relevantAnatomicalLoss || significantStrengthLoss || relevantMobilityLoss) && moderateOrSevereImpact,
-      "outras alterações físicas permanentes": (relevantAnatomicalLoss || significantStrengthLoss || relevantMobilityLoss) && moderateOrSevereImpact
+      "limitação articular": articularCriterion && moderateOrSevereImpact,
+      "lesão neurológica": (strengthCriterion || relevantMobilityLoss) && moderateOrSevereImpact,
+      deformidade: (relevantMobilityLoss || relevantAnatomicalLoss || functionalLossSuspected) && moderateOrSevereImpact,
+      "sequela traumática": (relevantAnatomicalLoss || strengthCriterion || relevantMobilityLoss || functionalLossSuspected) && moderateOrSevereImpact,
+      "outras alterações físicas permanentes": (relevantAnatomicalLoss || strengthCriterion || relevantMobilityLoss || functionalLossSuspected) && moderateOrSevereImpact
     };
 
     const docNote = buildPhysicalDocumentationNote({
@@ -2257,7 +2326,10 @@ const startPcdDigital = () => {
       scope,
       supportDocs,
       segment,
-      movementFocus
+      movementFocus,
+      strengthGrade,
+      mobility,
+      requiresLaterality
     });
 
     if (scenarioEligible[conditionType]) {
@@ -2265,11 +2337,14 @@ const startPcdDigital = () => {
       if (conditionType !== "amputação" && relevantAnatomicalLoss) {
         findings.push(anatomicalLoss === "relevante" ? "perda anatômica relevante" : "perda anatômica parcial relevante");
       }
-      if (significantStrengthLoss) {
+      if (strengthCriterion && strengthGrade && strengthGrade !== "5" && strengthGrade !== "na") {
         findings.push(`redução de força muscular grau ${strengthGrade}${strengthPattern ? ` em ${labelForSelectValue("physicalStrengthPattern").toLowerCase()}` : ""}`);
       }
       if (relevantMobilityLoss) {
         findings.push(`limitação ${mobility} de mobilidade`);
+      }
+      if (functionalLossSuspected) {
+        findings.push("perda funcional consistente do segmento acometido");
       }
       if (movementFocus) {
         findings.push(labelForSelectValue("physicalMovementFocus"));
@@ -2284,7 +2359,7 @@ const startPcdDigital = () => {
       let limitations = `Apresenta limitação funcional ${functionalDegreeText(impactGrade)}, com ${joinList(functionalMarkers)}.`;
 
       return eligibleResult({
-        message: "Enquadra como PCD pela combinação entre permanência da condição, perda ou limitação relevante e impacto funcional moderado ou grave.",
+        message: "Enquadra como PCD pela combinação entre permanência da condição, evidência anatômico-funcional objetiva e impacto funcional moderado ou grave.",
         description,
         limitations,
         facts,
@@ -2292,11 +2367,15 @@ const startPcdDigital = () => {
       });
     }
 
-    if (impactGrade === "leve" || (!scenarioEligible[conditionType] && !relevantAnatomicalLoss && !significantStrengthLoss && !relevantMobilityLoss && !amputationRelevant)) {
+    if (conditionType === "lesão neurológica" && borderlineStrengthLoss && !associatedNeurologicalEvidence) {
+      return reviewResult("Força muscular grau 4 isolada exige alterações associadas para sustentar enquadramento físico, conforme a cartilha técnica do MPT.", facts, docNote);
+    }
+
+    if (impactGrade === "leve" || (!scenarioEligible[conditionType] && !relevantAnatomicalLoss && !strengthCriterion && !relevantMobilityLoss && !amputationRelevant && !functionalLossSuspected)) {
       return ineligibleResult("Alteração não caracteriza deficiência conforme critérios funcionais.", facts, docNote);
     }
 
-    return reviewResult("Dados funcionais ainda insuficientes para conclusão segura. Revise a coerência entre perda estrutural, mobilidade, força e impacto funcional.", facts, docNote);
+    return reviewResult("Dados funcionais ainda insuficientes para conclusão segura. Revise a coerência entre perda estrutural, mobilidade, força, permanência e impacto funcional.", facts, docNote);
   }
 
   function evaluateClinical() {
@@ -2608,11 +2687,27 @@ const startPcdDigital = () => {
   });
 
   function normalizeCidCode(cid) {
-    return String(cid || "")
+    const raw = String(cid || "")
       .trim()
       .toUpperCase()
       .replace(",", ".")
-      .replace(/\s+/g, "");
+      .replace(/\s+/g, "")
+      .replace(/[^A-Z0-9.]/g, "");
+    if (!raw) {
+      return "";
+    }
+
+    const collapsed = raw.replace(/\./g, "");
+    if (!raw.includes(".") && /^[A-Z]\d{2}[A-Z0-9]{1,4}$/.test(collapsed)) {
+      return `${collapsed.slice(0, 3)}.${collapsed.slice(3, 7)}`;
+    }
+
+    if (/^[A-Z]\d{2}\.[A-Z0-9]{1,4}$/.test(raw)) {
+      const [head, tail] = raw.split(".");
+      return `${head}.${tail.slice(0, 4)}`;
+    }
+
+    return raw;
   }
 
   function formatCid(cid) {
@@ -2792,8 +2887,11 @@ const startPcdDigital = () => {
         notes.push("Recomenda-se laudo ortopédico ou fisiátrico com descrição objetiva da limitação funcional e do caráter permanente.");
       }
     }
-    if (data.conditionType !== "amputação" && !data.movementFocus) {
+    if (data.conditionType === "limitação articular" && !data.movementFocus) {
       notes.push("Especifique o movimento ou função predominante afetada para reforçar a consistência descritiva do caso.");
+    }
+    if (data.conditionType === "lesão neurológica" && data.strengthGrade === "4" && !["moderada", "grave"].includes(data.mobility || "")) {
+      notes.push("Para força grau 4, descreva alterações associadas de mobilidade, trofismo ou perda funcional para sustentar o enquadramento.");
     }
     return joinSupportNotes(notes);
   }
@@ -3152,10 +3250,11 @@ const startPcdDigital = () => {
   function buildPhysicalPdfDetail() {
     const choice = valueOf("physicalConditionType");
     const scope = valueOf("physicalAmputationScope");
+    const laterality = resolveEffectivePhysicalLaterality();
     if (choice === "amputação") {
-      return composeAmputationFinding(scope, valueOf("physicalLaterality"), collectAmputationDetail(), valueOf("physicalAmputationLevel"));
+      return composeAmputationFinding(scope, laterality, collectAmputationDetail(), valueOf("physicalAmputationLevel"));
     }
-    return `${capitalize(choice)} em ${composeSegment(resolvePhysicalSegment(), valueOf("physicalLaterality"))}`;
+    return `${capitalize(choice)} em ${composeSegment(resolvePhysicalSegment(), laterality)}`;
   }
 
   function buildPsychosocialPdfDetail() {
@@ -11556,7 +11655,7 @@ const startPcdDigital = () => {
   function buildSystemPhysicalSegmentText() {
     const choiceKey = normalizedChoiceKey(valueOf("physicalConditionType"));
     const scope = valueOf("physicalAmputationScope");
-    const laterality = valueOf("physicalLaterality");
+    const laterality = resolveEffectivePhysicalLaterality();
     if (choiceKey.includes("amput")) {
       return toPresentationText(composeAmputationFinding(scope, laterality, collectAmputationDetail(), valueOf("physicalAmputationLevel")));
     }
@@ -16901,23 +17000,38 @@ const startPcdDigital = () => {
       `;
     }
 
-    setText(".sales-brand-chip", "Plataforma corporativa");
-    setText(".sales-hero-copy h3", "Caracterização de PCD com padrão corporativo, clareza documental e segurança técnica.");
-    setText(".sales-hero-copy p", "Solução desenvolvida para médicos e empresas que precisam padronizar a análise funcional, elevar a qualidade do laudo e operar com mais previsibilidade.");
-
-    setHtml(".sales-hero-actions", `
-      <button class="primary-button sales-primary-button" type="button" id="heroPlansButton">Conhecer planos</button>
+    setHtml(".sales-hero-copy", `
+      <span class="sales-brand-chip">Plataforma corporativa</span>
+      <h3>Base técnica para enquadramento ocupacional de PCD</h3>
+      <p>Triagem estruturada, CID com descrição automática, laudo padronizado e governança documental para empresas e médicos responsáveis.</p>
+      <div class="sales-hero-evidence" aria-label="Provas do produto">
+        <span>Fluxo por tipo de deficiência</span>
+        <span>CID com descrição automática</span>
+        <span>Laudo com padrão profissional</span>
+      </div>
+      <div class="sales-hero-actions">
+        <button class="primary-button sales-primary-button" type="button" id="heroPlansButton">Conhecer planos</button>
+      </div>
     `);
 
     setHtml(".sales-hero-panel", `
       <div class="hero-insight-visual" id="heroInsightVisual" aria-hidden="true">
-        <span class="hero-insight-chip">Vis&atilde;o do produto</span>
-        <strong class="hero-insight-title" id="heroInsightTitle">Triagem guiada por tipo de defici&ecirc;ncia</strong>
-        <p class="hero-insight-text" id="heroInsightText">Campos estruturados reduzem retrabalho e ajudam a manter o parecer t&eacute;cnico consistente desde o primeiro registro.</p>
-        <div class="hero-insight-dots" id="heroInsightDots">
-          <span class="hero-insight-dot is-active"></span>
-          <span class="hero-insight-dot"></span>
-          <span class="hero-insight-dot"></span>
+        <span class="hero-insight-chip">Base operacional</span>
+        <strong class="hero-insight-title" id="heroInsightTitle">Rastreabilidade desde a triagem at&eacute; o laudo</strong>
+        <p class="hero-insight-text" id="heroInsightText">Coleta guiada, crit&eacute;rios funcionais mais claros e emiss&atilde;o vinculada ao m&eacute;dico autenticado, com melhor consist&ecirc;ncia documental.</p>
+        <div class="hero-insight-proof-list">
+          <div class="hero-insight-proof-item">
+            <strong>CID autom&aacute;tico</strong>
+            <span>Descri&ccedil;&atilde;o preenchida a partir de base local validada.</span>
+          </div>
+          <div class="hero-insight-proof-item">
+            <strong>R&eacute;gua funcional</strong>
+            <span>M&oacute;dulos orientados por crit&eacute;rios de caracteriza&ccedil;&atilde;o ocupacional.</span>
+          </div>
+          <div class="hero-insight-proof-item">
+            <strong>Governan&ccedil;a documental</strong>
+            <span>Texto t&eacute;cnico, limita&ccedil;&otilde;es e PDF organizados no mesmo fluxo.</span>
+          </div>
         </div>
       </div>
     `);
@@ -20028,6 +20142,9 @@ const startPcdDigital = () => {
   );
   const CID_DESCRIPTION_LOOKUP_REQUESTS = new Map();
   const CID_DESCRIPTION_LOOKUP_TIMERS = new Map();
+  const CID_DESCRIPTION_SEARCH_CACHE = new Map();
+  const CID_DESCRIPTION_SEARCH_TIMERS = new Map();
+  const CID_SUGGESTION_DATALIST_ID = "cidSuggestionList";
 
   function normalizePdfTextValue(value) {
     return normalizeSpacing(String(value || ""));
@@ -20104,25 +20221,7 @@ const startPcdDigital = () => {
 
     const request = (async () => {
       try {
-        const sessionToken = getApiSessionToken();
-        const headers = {};
-        if (sessionToken) {
-          headers.Authorization = `Bearer ${sessionToken}`;
-        }
-
-        const response = await fetch(
-          buildApiUrl(`/api/cid/lookup?code=${encodeURIComponent(normalizedCode)}`),
-          {
-            method: "GET",
-            headers,
-            credentials: "include"
-          }
-        );
-        if (!response.ok) {
-          return "";
-        }
-
-        const payload = await response.json().catch(() => ({}));
+        const payload = await apiJson(`/api/cid/lookup?code=${encodeURIComponent(normalizedCode)}`);
         const description = normalizePdfTextValue(payload.description || "");
         if (description) {
           CID_DESCRIPTION_RUNTIME_CACHE.set(normalizedCode, description);
@@ -20138,6 +20237,130 @@ const startPcdDigital = () => {
 
     CID_DESCRIPTION_LOOKUP_REQUESTS.set(normalizedCode, request);
     return request;
+  }
+
+  function ensureCidSuggestionDatalist() {
+    let datalist = document.getElementById(CID_SUGGESTION_DATALIST_ID);
+    if (!datalist) {
+      datalist = document.createElement("datalist");
+      datalist.id = CID_SUGGESTION_DATALIST_ID;
+      document.body.appendChild(datalist);
+    }
+
+    Object.values(CID_FIELD_DEFINITION_MAP).forEach((definition) => {
+      const field = document.getElementById(definition.codeId);
+      if (field) {
+        field.setAttribute("list", CID_SUGGESTION_DATALIST_ID);
+        field.setAttribute("autocomplete", "off");
+        field.setAttribute("spellcheck", "false");
+      }
+    });
+
+    return datalist;
+  }
+
+  function renderCidSuggestionOptions(items = []) {
+    const datalist = ensureCidSuggestionDatalist();
+    datalist.innerHTML = "";
+
+    items.slice(0, 8).forEach((item) => {
+      if (!item || !item.code) {
+        return;
+      }
+
+      const option = document.createElement("option");
+      const normalizedCode = normalizeCidCode(item.code);
+      const description = normalizePdfTextValue(item.description || lookupCidDescription(normalizedCode));
+      option.value = normalizedCode || item.code;
+      option.label = description ? `${normalizedCode} - ${description}` : (normalizedCode || item.code);
+      if (description) {
+        option.textContent = option.label;
+      }
+      datalist.appendChild(option);
+    });
+  }
+
+  async function fetchCidSuggestionsFromApi(query) {
+    const normalizedQuery = normalizePdfTextValue(query);
+    if (!normalizedQuery || normalizedQuery.length < 2) {
+      return [];
+    }
+
+    const cacheKey = normalizeCidCode(normalizedQuery) || normalizedQuery.toUpperCase();
+    if (CID_DESCRIPTION_SEARCH_CACHE.has(cacheKey)) {
+      return CID_DESCRIPTION_SEARCH_CACHE.get(cacheKey);
+    }
+
+    try {
+      const payload = await apiJson(`/api/cid/search?q=${encodeURIComponent(normalizedQuery)}`);
+      const items = Array.isArray(payload.items)
+        ? payload.items
+          .map((item) => ({
+            code: normalizeCidCode(item.code),
+            description: normalizePdfTextValue(item.description)
+          }))
+          .filter((item) => item.code && item.description)
+        : [];
+
+      items.forEach((item) => {
+        CID_DESCRIPTION_RUNTIME_CACHE.set(item.code, item.description);
+      });
+      CID_DESCRIPTION_SEARCH_CACHE.set(cacheKey, items);
+      return items;
+    } catch (error) {
+      return [];
+    }
+  }
+
+  function scheduleCidSuggestionLookup(moduleKey, rawValue) {
+    const definition = getCidFieldDefinition(moduleKey);
+    if (!definition) {
+      return;
+    }
+
+    const codeField = document.getElementById(definition.codeId);
+    if (!codeField) {
+      return;
+    }
+
+    const query = normalizePdfTextValue(rawValue);
+    const timerKey = `${definition.codeId}:search`;
+    if (CID_DESCRIPTION_SEARCH_TIMERS.has(timerKey)) {
+      window.clearTimeout(CID_DESCRIPTION_SEARCH_TIMERS.get(timerKey));
+    }
+
+    if (!query || query.length < 2) {
+      renderCidSuggestionOptions([]);
+      return;
+    }
+
+    CID_DESCRIPTION_SEARCH_TIMERS.set(timerKey, window.setTimeout(async () => {
+      CID_DESCRIPTION_SEARCH_TIMERS.delete(timerKey);
+
+      const currentRawValue = normalizePdfTextValue(codeField.value);
+      if (currentRawValue !== query) {
+        return;
+      }
+
+      const items = await fetchCidSuggestionsFromApi(query);
+      if (normalizePdfTextValue(codeField.value) !== query) {
+        return;
+      }
+
+      renderCidSuggestionOptions(items);
+
+      const exactMatch = items.find((item) => item.code === normalizeCidCode(query));
+      if (!exactMatch || !exactMatch.description) {
+        return;
+      }
+
+      const descriptionField = document.getElementById(definition.descriptionId);
+      if (descriptionField && shouldOverwriteCidDescriptionField(descriptionField, exactMatch.description)) {
+        descriptionField.value = exactMatch.description;
+        descriptionField.dataset.autoFilled = "true";
+        descriptionField.dataset.autoValue = exactMatch.description;
+      }
+    }, 180));
   }
 
   function scheduleCidDescriptionLookup(moduleKey, code) {
@@ -20341,6 +20564,7 @@ const startPcdDigital = () => {
 
       if (fieldId === definition.codeId) {
         syncCidDescriptionField(moduleKey);
+        scheduleCidSuggestionLookup(moduleKey, event.target.value);
         return;
       }
 
@@ -20366,6 +20590,7 @@ const startPcdDigital = () => {
     document.addEventListener("change", normalizeCidFromEvent, true);
     document.addEventListener("blur", normalizeCidFromEvent, true);
 
+    ensureCidSuggestionDatalist();
     syncAllCidDescriptionFields({ normalizeCodeField: true });
   }
 

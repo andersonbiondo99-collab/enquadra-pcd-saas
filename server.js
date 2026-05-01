@@ -15,6 +15,7 @@ const DATA_DIR = process.env.DATA_DIR
   : path.join(ROOT_DIR, "data");
 const USERS_FILE = path.join(DATA_DIR, "users.json");
 const PLANS_FILE = path.join(DATA_DIR, "plans.json");
+const CID_MAP_FILE = path.join(DATA_DIR, "cid-map.json");
 const SESSION_COOKIE = "enquadra_session";
 const BODY_LIMIT_BYTES = 1024 * 1024 * 2;
 const MERCADO_PAGO_API = "api.mercadopago.com";
@@ -155,8 +156,11 @@ const CID_LOOKUP_CACHE_TTL_MS = 1000 * 60 * 60 * 24 * 7;
 
 const sessions = new Map();
 const cidLookupCache = new Map();
+let cidCatalogMap = Object.create(null);
+let cidCatalogEntries = [];
 
 ensureDataStore();
+loadCidCatalog();
 
 const server = http.createServer(async (req, res) => {
   try {
@@ -229,6 +233,12 @@ const server = http.createServer(async (req, res) => {
         sourceUrl: result.sourceUrl || buildCidLookupUrl(code),
         cached: Boolean(result.cached)
       });
+    }
+
+    if (pathname === "/api/cid/search" && req.method === "GET") {
+      const query = requestUrl.searchParams.get("q");
+      const items = searchCidCatalog(query, 8);
+      return sendJson(res, 200, { query: normalizeText(query), items });
     }
 
     if (pathname === "/api/public/register-company" && req.method === "POST") {
@@ -1975,12 +1985,100 @@ function normalizeText(value) {
   return String(value || "").trim();
 }
 
+function normalizeSearchText(value) {
+  return normalizeText(value)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase();
+}
+
 function normalizeCidCode(value) {
-  return String(value || "")
+  const raw = String(value || "")
     .trim()
     .toUpperCase()
     .replace(",", ".")
-    .replace(/\s+/g, "");
+    .replace(/\s+/g, "")
+    .replace(/[^A-Z0-9.]/g, "");
+  if (!raw) {
+    return "";
+  }
+
+  const collapsed = raw.replace(/\./g, "");
+  if (!raw.includes(".") && /^[A-Z]\d{2}[A-Z0-9]{1,4}$/.test(collapsed)) {
+    return `${collapsed.slice(0, 3)}.${collapsed.slice(3, 7)}`;
+  }
+
+  if (/^[A-Z]\d{2}\.[A-Z0-9]{1,4}$/.test(raw)) {
+    const [head, tail] = raw.split(".");
+    return `${head}.${tail.slice(0, 4)}`;
+  }
+
+  return raw;
+}
+
+function loadCidCatalog() {
+  try {
+    const raw = fs.readFileSync(CID_MAP_FILE, "utf8");
+    const parsed = JSON.parse(raw);
+    const nextMap = Object.create(null);
+    const nextEntries = [];
+
+    Object.entries(parsed && typeof parsed === "object" ? parsed : {}).forEach(([code, description]) => {
+      const normalizedCode = normalizeCidCode(code);
+      const normalizedDescription = normalizeText(description);
+      if (!normalizedCode || !normalizedDescription) {
+        return;
+      }
+
+      nextMap[normalizedCode] = normalizedDescription;
+      nextEntries.push({
+        code: normalizedCode,
+        description: normalizedDescription,
+        searchIndex: `${normalizedCode} ${normalizeSearchText(normalizedDescription)}`
+      });
+    });
+
+    cidCatalogMap = nextMap;
+    cidCatalogEntries = nextEntries;
+  } catch (error) {
+    console.warn("[cid-catalog] Nao foi possivel carregar a base local de CID.", error && error.message ? error.message : error);
+    cidCatalogMap = Object.create(null);
+    cidCatalogEntries = [];
+  }
+}
+
+function lookupLocalCidDescription(code) {
+  return cidCatalogMap[normalizeCidCode(code)] || "";
+}
+
+function searchCidCatalog(query, limit = 8) {
+  const normalizedCode = normalizeCidCode(query);
+  const searchQuery = normalizeSearchText(query);
+  if (!normalizedCode && !searchQuery) {
+    return [];
+  }
+
+  const prefixMatches = [];
+  const descriptionMatches = [];
+
+  cidCatalogEntries.forEach((entry) => {
+    if (prefixMatches.length >= limit && descriptionMatches.length >= limit) {
+      return;
+    }
+
+    if (normalizedCode && entry.code.startsWith(normalizedCode)) {
+      prefixMatches.push(entry);
+      return;
+    }
+
+    if (searchQuery && entry.searchIndex.includes(searchQuery)) {
+      descriptionMatches.push(entry);
+    }
+  });
+
+  return [...prefixMatches, ...descriptionMatches]
+    .slice(0, limit)
+    .map((entry) => ({ code: entry.code, description: entry.description }));
 }
 
 function decodeHtmlEntities(value) {
@@ -2086,13 +2184,25 @@ async function lookupCidDescriptionByCode(code) {
     return { found: false, description: "", sourceUrl, cached: false };
   }
 
+  const localDescription = lookupLocalCidDescription(normalizedCode);
+  if (localDescription) {
+    return {
+      found: true,
+      description: localDescription,
+      sourceUrl: "local-catalog",
+      cached: true,
+      source: "local"
+    };
+  }
+
   const cachedEntry = cidLookupCache.get(normalizedCode);
   if (isCidLookupCacheFresh(cachedEntry)) {
     return {
       found: Boolean(cachedEntry.found),
       description: cachedEntry.description || "",
       sourceUrl: cachedEntry.sourceUrl || sourceUrl,
-      cached: true
+      cached: true,
+      source: cachedEntry.source || "external"
     };
   }
 
@@ -2102,7 +2212,8 @@ async function lookupCidDescriptionByCode(code) {
     found: Boolean(description),
     description,
     sourceUrl,
-    storedAt: Date.now()
+    storedAt: Date.now(),
+    source: "external"
   };
   cidLookupCache.set(normalizedCode, nextEntry);
 
@@ -2110,7 +2221,8 @@ async function lookupCidDescriptionByCode(code) {
     found: nextEntry.found,
     description: nextEntry.description,
     sourceUrl,
-    cached: false
+    cached: false,
+    source: "external"
   };
 }
 
