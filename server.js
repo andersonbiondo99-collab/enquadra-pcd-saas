@@ -237,7 +237,7 @@ const server = http.createServer(async (req, res) => {
 
     if (pathname === "/api/cid/search" && req.method === "GET") {
       const query = requestUrl.searchParams.get("q");
-      const items = searchCidCatalog(query, 8);
+      const items = await searchCidCatalog(query, 8);
       return sendJson(res, 200, { query: normalizeText(query), items });
     }
 
@@ -2051,7 +2051,7 @@ function lookupLocalCidDescription(code) {
   return cidCatalogMap[normalizeCidCode(code)] || "";
 }
 
-function searchCidCatalog(query, limit = 8) {
+async function searchCidCatalog(query, limit = 8) {
   const normalizedCode = normalizeCidCode(query);
   const searchQuery = normalizeSearchText(query);
   if (!normalizedCode && !searchQuery) {
@@ -2076,9 +2076,20 @@ function searchCidCatalog(query, limit = 8) {
     }
   });
 
-  return [...prefixMatches, ...descriptionMatches]
+  const localItems = [...prefixMatches, ...descriptionMatches]
     .slice(0, limit)
     .map((entry) => ({ code: entry.code, description: entry.description }));
+
+  if (localItems.length || cidCatalogEntries.length) {
+    return localItems;
+  }
+
+  try {
+    const html = await fetchRemoteText(buildCidLookupUrl(query));
+    return extractCidResultsFromSearchHtml(html, limit);
+  } catch (error) {
+    return [];
+  }
 }
 
 function decodeHtmlEntities(value) {
@@ -2128,6 +2139,32 @@ function extractCidDescriptionFromSearchHtml(html, code) {
   }
 
   return "";
+}
+
+function extractCidResultsFromSearchHtml(html, limit = 8) {
+  const results = [];
+  const seen = new Set();
+  const resultPattern = /<span[^>]*>\s*CID\s*(?:<!--\s*-->)?\s*([A-Z0-9.,]+)\s*<\/span>[\s\S]*?<p[^>]*>([\s\S]*?)<\/p>/gi;
+  let match;
+
+  while ((match = resultPattern.exec(String(html))) !== null) {
+    const code = normalizeCidCode(decodeHtmlEntities(stripHtmlTags(match[1])));
+    const description = normalizeText(
+      decodeHtmlEntities(stripHtmlTags(match[2])).replace(/\s+/g, " ")
+    );
+
+    if (!code || !description || seen.has(code)) {
+      continue;
+    }
+
+    seen.add(code);
+    results.push({ code, description });
+    if (results.length >= limit) {
+      break;
+    }
+  }
+
+  return results;
 }
 
 function fetchRemoteText(urlString) {

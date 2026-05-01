@@ -1731,10 +1731,7 @@ const startPcdDigital = () => {
     if (context.conditionType && context.conditionType !== "amputação" && !context.segmentReady) {
       missing.push("o segmento corporal acometido");
     }
-    if (context.requiresLaterality && !context.laterality) {
-      missing.push("a lateralidade");
-    }
-    if (!context.impactGrade) {
+    if (!context.impactGrade && !context.inferredImpactGrade) {
       missing.push("o impacto funcional");
     }
     if (!context.functionalCount) {
@@ -1750,6 +1747,36 @@ const startPcdDigital = () => {
       missing.push("a graduação de força muscular ou a mobilidade");
     }
     return missing;
+  }
+
+  function inferPhysicalImpactGrade(context = {}) {
+    if (context.impactGrade) {
+      return context.impactGrade;
+    }
+
+    const markerCount = Number(context.functionalCount || 0);
+    const severeObjectiveLoss = Boolean(
+      context.amputationRelevant
+      || ["0", "1", "2"].includes(context.strengthGrade)
+      || context.mobility === "grave"
+    );
+
+    if (markerCount >= 2 && severeObjectiveLoss) {
+      return "grave";
+    }
+
+    const moderateObjectiveLoss = Boolean(
+      context.relevantAnatomicalLoss
+      || ["3", "4"].includes(context.strengthGrade)
+      || ["moderada", "grave"].includes(context.mobility || "")
+      || context.functionalLossSuspected
+    );
+
+    if (markerCount >= 1 && moderateObjectiveLoss) {
+      return "moderado";
+    }
+
+    return "";
   }
 
   function populateMovementFocusOptions(segment) {
@@ -2256,10 +2283,9 @@ const startPcdDigital = () => {
     const amputationLevel = valueOf("physicalAmputationLevel");
     const strengthGrade = valueOf("physicalStrengthGrade");
     const mobility = valueOf("physicalMobility");
-    const impactGrade = valueOf("physicalImpactGrade");
+    const rawImpactGrade = valueOf("physicalImpactGrade");
     const functionalMarkers = checkedLabels("physicalFunctionItem");
     const functionalLossSuspected = checked("physicalFunctionalLossSuspected");
-    const moderateOrSevereImpact = ["moderado", "grave"].includes(impactGrade);
     const relevantAnatomicalLoss = ["parcial", "relevante"].includes(anatomicalLoss);
     const significantStrengthLoss = ["0", "1", "2", "3"].includes(strengthGrade);
     const borderlineStrengthLoss = strengthGrade === "4";
@@ -2269,14 +2295,31 @@ const startPcdDigital = () => {
     const strengthCriterion = significantStrengthLoss || (borderlineStrengthLoss && associatedNeurologicalEvidence);
     const amputationDetail = collectAmputationDetail();
     const amputationRelevant = evaluateAmputationRelevance(scope, amputationDetail, amputationLevel);
-    const requiresLaterality = segment !== "coluna";
+    const impactGrade = inferPhysicalImpactGrade({
+      impactGrade: rawImpactGrade,
+      functionalCount: functionalMarkers.length,
+      relevantAnatomicalLoss,
+      strengthGrade,
+      mobility,
+      functionalLossSuspected,
+      amputationRelevant
+    });
+    const impactWasInferred = !rawImpactGrade && Boolean(impactGrade);
+    const moderateOrSevereImpact = ["moderado", "grave"].includes(impactGrade);
+    if (impactWasInferred) {
+      const impactField = document.getElementById("physicalImpactGrade");
+      if (impactField && !impactField.value) {
+        impactField.value = impactGrade;
+      }
+    }
 
     const missingItems = buildPhysicalMissingItems({
       conditionType,
       segmentReady: conditionType === "amputação" ? Boolean(scope) : Boolean(segment),
       laterality,
-      requiresLaterality,
-      impactGrade,
+      requiresLaterality: false,
+      impactGrade: rawImpactGrade,
+      inferredImpactGrade: impactGrade,
       functionalCount: functionalMarkers.length,
       scope,
       movementFocus,
@@ -2287,8 +2330,9 @@ const startPcdDigital = () => {
     const facts = [
       `Condição principal: ${capitalize(conditionType)}`,
       `Segmento funcional: ${conditionType === "amputação" ? composeAmputationFinding(scope, laterality, amputationDetail, amputationLevel) : composeSegment(segment, laterality)}`,
+      `Lateralidade: ${laterality ? capitalize(laterality) : "Não especificada"}`,
       `Condição permanente: ${translateYesNo(permanent)}`,
-      `Impacto funcional: ${capitalize(impactGrade)}`,
+      `Impacto funcional: ${capitalize(impactGrade || "não informado")}${impactWasInferred ? " (inferido pelos achados objetivos)" : ""}`,
       `Perda anatômica: ${capitalize(anatomicalLoss || (conditionType === "amputação" ? "relevante" : "não informada"))}`,
       `Topografia da perda de força: ${strengthPattern ? labelForSelectValue("physicalStrengthPattern") : "Não informada"}`,
       `Força muscular: ${strengthGrade || "Não informada"}`,
@@ -2304,7 +2348,7 @@ const startPcdDigital = () => {
         movementFocus,
         strengthGrade,
         mobility,
-        requiresLaterality
+        requiresLaterality: false
       }));
     }
 
@@ -2329,7 +2373,7 @@ const startPcdDigital = () => {
       movementFocus,
       strengthGrade,
       mobility,
-      requiresLaterality
+      requiresLaterality: false
     });
 
     if (scenarioEligible[conditionType]) {
