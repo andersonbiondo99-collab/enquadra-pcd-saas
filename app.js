@@ -393,8 +393,6 @@ const startPcdDigital = () => {
     pendingTextRepairRoot: null
   };
 
-  init();
-
   function init() {
     repairInterfaceTextContent();
     observeInterfaceTextMutations();
@@ -21001,7 +20999,791 @@ const startPcdDigital = () => {
     }
   }
 
+  // Final stability layer for CID + enquadramento: this block intentionally
+  // overrides earlier duplicated functions so the published app keeps one
+  // coherent flow for fisica, auditiva e visual.
+  let pcdCidCatalogPromise = null;
+  let pcdCidCatalogMap = null;
+  let pcdCidCatalogEntries = [];
+
+  function pcdDebugLog(step, details = {}) {
+    console.info("[pcd-debug]", step, details);
+  }
+
+  function pcdNormalizeSearchToken(value) {
+    return normalizePdfTextValue(value)
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toUpperCase();
+  }
+
+  function ensureCidStatusNode(moduleKey) {
+    const definition = getCidFieldDefinition(moduleKey);
+    if (!definition) {
+      return null;
+    }
+
+    const descriptionField = document.getElementById(definition.descriptionId);
+    if (!descriptionField) {
+      return null;
+    }
+
+    const existingId = `${definition.descriptionId}Status`;
+    let note = document.getElementById(existingId);
+    if (note) {
+      return note;
+    }
+
+    note = document.createElement("small");
+    note.id = existingId;
+    note.dataset.cidStatusFor = definition.descriptionId;
+    note.style.display = "block";
+    note.style.minHeight = "1.45em";
+    note.style.marginTop = "6px";
+    descriptionField.insertAdjacentElement("afterend", note);
+    return note;
+  }
+
+  function setCidStatusMessage(moduleKey, message = "", tone = "info") {
+    const note = ensureCidStatusNode(moduleKey);
+    if (!note) {
+      return;
+    }
+
+    note.textContent = message || "";
+    note.dataset.tone = tone;
+    note.style.color = {
+      success: "var(--success)",
+      warning: "var(--warning)",
+      error: "var(--danger)",
+      info: "var(--text-soft)"
+    }[tone] || "var(--text-soft)";
+  }
+
+  async function loadCidCatalogFromStaticBase() {
+    if (pcdCidCatalogMap instanceof Map) {
+      return pcdCidCatalogMap;
+    }
+
+    if (pcdCidCatalogPromise) {
+      return pcdCidCatalogPromise;
+    }
+
+    pcdCidCatalogPromise = (async () => {
+      const candidates = [];
+      const preferredUrl = buildAppUrl("/data/cid-map.json");
+      if (preferredUrl) {
+        candidates.push(preferredUrl);
+      }
+      candidates.push("data/cid-map.json");
+
+      let payload = null;
+      for (const candidate of candidates) {
+        try {
+          const response = await fetch(candidate, { cache: "no-store" });
+          if (!response.ok) {
+            continue;
+          }
+          payload = await response.json();
+          break;
+        } catch (error) {
+          // Try the next candidate without interrupting the enquadramento flow.
+        }
+      }
+
+      const nextMap = new Map();
+      const nextEntries = [];
+      Object.entries(payload && typeof payload === "object" ? payload : {}).forEach(([code, description]) => {
+        const normalizedCode = normalizeCidCode(code);
+        const normalizedDescription = normalizePdfTextValue(description);
+        if (!normalizedCode || !normalizedDescription) {
+          return;
+        }
+
+        nextMap.set(normalizedCode, normalizedDescription);
+        nextEntries.push({
+          code: normalizedCode,
+          description: normalizedDescription,
+          searchIndex: `${normalizedCode} ${pcdNormalizeSearchToken(normalizedDescription)}`
+        });
+        CID_DESCRIPTION_RUNTIME_CACHE.set(normalizedCode, normalizedDescription);
+      });
+
+      pcdCidCatalogMap = nextMap;
+      pcdCidCatalogEntries = nextEntries;
+      pcdDebugLog("cid-catalog-loaded", { total: nextEntries.length });
+      return nextMap;
+    })().catch((error) => {
+      console.warn("[pcd-debug] Falha ao carregar a base estatica de CID.", error);
+      pcdCidCatalogMap = new Map();
+      pcdCidCatalogEntries = [];
+      return pcdCidCatalogMap;
+    });
+
+    return pcdCidCatalogPromise;
+  }
+
+  async function resolveCidDescriptionFromStaticBase(code) {
+    const normalizedCode = normalizeCidCode(code);
+    if (!normalizedCode) {
+      return "";
+    }
+
+    const cached = lookupCidDescription(normalizedCode);
+    if (cached) {
+      return cached;
+    }
+
+    const catalog = await loadCidCatalogFromStaticBase();
+    const description = catalog instanceof Map ? (catalog.get(normalizedCode) || "") : "";
+    if (description) {
+      CID_DESCRIPTION_RUNTIME_CACHE.set(normalizedCode, description);
+    }
+    return description;
+  }
+
+  async function searchCidSuggestionsFromStaticBase(query, limit = 8) {
+    const normalizedQuery = normalizePdfTextValue(query);
+    if (!normalizedQuery || normalizedQuery.length < 2) {
+      return [];
+    }
+
+    await loadCidCatalogFromStaticBase();
+    if (!pcdCidCatalogEntries.length) {
+      return [];
+    }
+
+    const normalizedCode = normalizeCidCode(normalizedQuery);
+    const searchToken = pcdNormalizeSearchToken(normalizedQuery);
+    const prefixMatches = [];
+    const descriptionMatches = [];
+
+    pcdCidCatalogEntries.forEach((entry) => {
+      if (prefixMatches.length >= limit && descriptionMatches.length >= limit) {
+        return;
+      }
+
+      if (normalizedCode && entry.code.startsWith(normalizedCode)) {
+        prefixMatches.push({ code: entry.code, description: entry.description });
+        return;
+      }
+
+      if (searchToken && entry.searchIndex.includes(searchToken)) {
+        descriptionMatches.push({ code: entry.code, description: entry.description });
+      }
+    });
+
+    return [...prefixMatches, ...descriptionMatches]
+      .slice(0, limit)
+      .filter((item, index, items) => items.findIndex((entry) => entry.code === item.code) === index);
+  }
+
+  async function fetchCidDescriptionFromApi(code) {
+    const normalizedCode = normalizeCidCode(code);
+    if (!isEligibleCidLookupCode(normalizedCode)) {
+      return "";
+    }
+
+    const cached = lookupCidDescription(normalizedCode);
+    if (cached) {
+      return cached;
+    }
+
+    const staticDescription = await resolveCidDescriptionFromStaticBase(normalizedCode);
+    if (staticDescription) {
+      pcdDebugLog("cid-description-resolved", {
+        module: state.activeModule,
+        code: normalizedCode,
+        source: "static-base"
+      });
+      return staticDescription;
+    }
+
+    if (CID_DESCRIPTION_LOOKUP_REQUESTS.has(normalizedCode)) {
+      return CID_DESCRIPTION_LOOKUP_REQUESTS.get(normalizedCode);
+    }
+
+    const request = (async () => {
+      try {
+        const payload = await apiJson(`/api/cid/lookup?code=${encodeURIComponent(normalizedCode)}`);
+        const description = normalizePdfTextValue(payload.description || "");
+        if (description) {
+          CID_DESCRIPTION_RUNTIME_CACHE.set(normalizedCode, description);
+        }
+        pcdDebugLog("cid-description-resolved", {
+          module: state.activeModule,
+          code: normalizedCode,
+          description,
+          source: "api"
+        });
+        return description;
+      } catch (error) {
+        if (error && Number(error.status) === 404) {
+          pcdDebugLog("cid-description-not-found", {
+            module: state.activeModule,
+            code: normalizedCode
+          });
+          return "";
+        }
+        console.error("Falha ao consultar descricao automatica do CID.", error);
+        return "";
+      } finally {
+        CID_DESCRIPTION_LOOKUP_REQUESTS.delete(normalizedCode);
+      }
+    })();
+
+    CID_DESCRIPTION_LOOKUP_REQUESTS.set(normalizedCode, request);
+    return request;
+  }
+
+  async function fetchCidSuggestionsFromApi(query) {
+    const normalizedQuery = normalizePdfTextValue(query);
+    if (!normalizedQuery || normalizedQuery.length < 2) {
+      return [];
+    }
+
+    const cacheKey = normalizeCidCode(normalizedQuery) || normalizedQuery.toUpperCase();
+    if (CID_DESCRIPTION_SEARCH_CACHE.has(cacheKey)) {
+      return CID_DESCRIPTION_SEARCH_CACHE.get(cacheKey);
+    }
+
+    const staticItems = await searchCidSuggestionsFromStaticBase(normalizedQuery, 8);
+    if (staticItems.length) {
+      staticItems.forEach((item) => {
+        CID_DESCRIPTION_RUNTIME_CACHE.set(item.code, item.description);
+      });
+      CID_DESCRIPTION_SEARCH_CACHE.set(cacheKey, staticItems);
+      return staticItems;
+    }
+
+    try {
+      const payload = await apiJson(`/api/cid/search?q=${encodeURIComponent(normalizedQuery)}`);
+      const items = Array.isArray(payload.items)
+        ? payload.items
+          .map((item) => ({
+            code: normalizeCidCode(item.code),
+            description: normalizePdfTextValue(item.description)
+          }))
+          .filter((item) => item.code && item.description)
+        : [];
+
+      items.forEach((item) => {
+        CID_DESCRIPTION_RUNTIME_CACHE.set(item.code, item.description);
+      });
+
+      if (!items.length) {
+        const normalizedCode = normalizeCidCode(normalizedQuery);
+        if (isEligibleCidLookupCode(normalizedCode)) {
+          const description = await fetchCidDescriptionFromApi(normalizedCode);
+          if (description) {
+            const fallbackItems = [{ code: normalizedCode, description }];
+            CID_DESCRIPTION_SEARCH_CACHE.set(cacheKey, fallbackItems);
+            return fallbackItems;
+          }
+        }
+      }
+
+      CID_DESCRIPTION_SEARCH_CACHE.set(cacheKey, items);
+      return items;
+    } catch (error) {
+      const normalizedCode = normalizeCidCode(normalizedQuery);
+      if (isEligibleCidLookupCode(normalizedCode)) {
+        const description = await fetchCidDescriptionFromApi(normalizedCode);
+        if (description) {
+          const fallbackItems = [{ code: normalizedCode, description }];
+          CID_DESCRIPTION_SEARCH_CACHE.set(cacheKey, fallbackItems);
+          return fallbackItems;
+        }
+      }
+      return [];
+    }
+  }
+
+  function syncCidDescriptionField(moduleKey, options = {}) {
+    const definition = getCidFieldDefinition(moduleKey);
+    if (!definition) {
+      return;
+    }
+
+    const codeField = document.getElementById(definition.codeId);
+    const descriptionField = document.getElementById(definition.descriptionId);
+    if (!codeField || !descriptionField) {
+      return;
+    }
+
+    const parsed = parseCidEntry(codeField.value);
+    if (options.normalizeCodeField && parsed.code) {
+      codeField.value = parsed.code;
+    }
+
+    const mappedDescription = lookupCidDescription(parsed.code);
+    const nextDescription = parsed.description || mappedDescription;
+
+    if (!parsed.code) {
+      if (descriptionField.dataset.autoFilled === "true" && !parsed.description) {
+        descriptionField.value = "";
+        descriptionField.dataset.autoFilled = "false";
+        descriptionField.dataset.autoValue = "";
+      }
+      setCidStatusMessage(moduleKey, "");
+      return;
+    }
+
+    if (nextDescription && shouldOverwriteCidDescriptionField(descriptionField, nextDescription)) {
+      descriptionField.value = nextDescription;
+      descriptionField.dataset.autoFilled = parsed.description ? "false" : "true";
+      descriptionField.dataset.autoValue = parsed.description ? "" : nextDescription;
+      setCidStatusMessage(moduleKey, "");
+      pcdDebugLog("cid-field-synced", {
+        module: moduleKey,
+        code: parsed.code,
+        description: nextDescription,
+        source: parsed.description ? "manual-inline" : "cache"
+      });
+      return;
+    }
+
+    if (!nextDescription && descriptionField.dataset.autoFilled === "true") {
+      descriptionField.value = "";
+      descriptionField.dataset.autoFilled = "false";
+      descriptionField.dataset.autoValue = "";
+    }
+
+    if (!nextDescription && parsed.code) {
+      setCidStatusMessage(moduleKey, "");
+      scheduleCidSuggestionLookup(moduleKey, parsed.code);
+      scheduleCidDescriptionLookup(moduleKey, parsed.code);
+    }
+  }
+
+  function scheduleCidDescriptionLookup(moduleKey, code) {
+    const definition = getCidFieldDefinition(moduleKey);
+    if (!definition) {
+      return;
+    }
+
+    const codeField = document.getElementById(definition.codeId);
+    const descriptionField = document.getElementById(definition.descriptionId);
+    const normalizedCode = normalizeCidCode(code);
+    if (
+      !codeField
+      || !descriptionField
+      || !isEligibleCidLookupCode(normalizedCode)
+      || lookupCidDescription(normalizedCode)
+    ) {
+      return;
+    }
+
+    const timerKey = definition.codeId;
+    if (CID_DESCRIPTION_LOOKUP_TIMERS.has(timerKey)) {
+      window.clearTimeout(CID_DESCRIPTION_LOOKUP_TIMERS.get(timerKey));
+    }
+
+    CID_DESCRIPTION_LOOKUP_TIMERS.set(timerKey, window.setTimeout(async () => {
+      CID_DESCRIPTION_LOOKUP_TIMERS.delete(timerKey);
+
+      const currentCode = parseCidEntry(codeField.value).code;
+      if (normalizeCidCode(currentCode) !== normalizedCode) {
+        return;
+      }
+
+      const resolvedDescription = await fetchCidDescriptionFromApi(normalizedCode);
+      const latestCode = parseCidEntry(codeField.value).code;
+      if (normalizeCidCode(latestCode) !== normalizedCode) {
+        return;
+      }
+
+      if (resolvedDescription) {
+        if (shouldOverwriteCidDescriptionField(descriptionField, resolvedDescription)) {
+          descriptionField.value = resolvedDescription;
+          descriptionField.dataset.autoFilled = "true";
+          descriptionField.dataset.autoValue = resolvedDescription;
+        }
+        setCidStatusMessage(moduleKey, "");
+        pcdDebugLog("cid-description-applied", {
+          module: moduleKey,
+          code: normalizedCode,
+          description: resolvedDescription
+        });
+        return;
+      }
+
+      setCidStatusMessage(moduleKey, "CID não localizado na base. Preencha a descrição manualmente.", "warning");
+      pcdDebugLog("cid-description-missing", {
+        module: moduleKey,
+        code: normalizedCode
+      });
+    }, 260));
+  }
+
+  async function ensureCidDescriptionResolvedForModule(moduleKey = state.activeModule) {
+    const definition = getCidFieldDefinition(moduleKey);
+    if (!definition) {
+      return "";
+    }
+
+    const codeField = document.getElementById(definition.codeId);
+    const descriptionField = document.getElementById(definition.descriptionId);
+    const parsed = parseCidEntry(codeField ? codeField.value : valueOfRaw(definition.codeId));
+    const currentDescription = normalizePdfTextValue(
+      descriptionField ? descriptionField.value : valueOfRaw(definition.descriptionId)
+    ) || parsed.description || lookupCidDescription(parsed.code);
+
+    if (!parsed.code) {
+      setCidStatusMessage(moduleKey, "");
+      return "";
+    }
+
+    if (currentDescription) {
+      setCidStatusMessage(moduleKey, "");
+      return currentDescription;
+    }
+
+    const resolvedDescription = await fetchCidDescriptionFromApi(parsed.code);
+    if (
+      resolvedDescription
+      && descriptionField
+      && shouldOverwriteCidDescriptionField(descriptionField, resolvedDescription)
+    ) {
+      descriptionField.value = resolvedDescription;
+      descriptionField.dataset.autoFilled = "true";
+      descriptionField.dataset.autoValue = resolvedDescription;
+      setCidStatusMessage(moduleKey, "");
+      return resolvedDescription;
+    }
+
+    setCidStatusMessage(moduleKey, "CID não localizado na base. Preencha a descrição manualmente.", "warning");
+    return currentDescription;
+  }
+
+  function eligibleResult(payload) {
+    const rawDescription = toPresentationText(payload && payload.description ? payload.description : "", true);
+    const description = rawDescription || buildOfficialDescriptionText(payload);
+    const rawLimitations = toPresentationText(payload && payload.limitations ? payload.limitations : "", true);
+    const limitations = rawLimitations || buildOfficialLimitationsText({
+      ...(payload || {}),
+      description
+    });
+    const facts = Array.isArray(payload && payload.facts)
+      ? payload.facts.map((fact) => toPresentationText(fact)).filter(Boolean)
+      : [];
+    const supportNote = toPresentationText(payload && payload.supportNote ? payload.supportNote : "", true);
+    const enrichedPayload = {
+      ...(payload || {}),
+      description,
+      limitations,
+      facts,
+      supportNote
+    };
+
+    return {
+      status: "eligible",
+      title: "Enquadra como PCD",
+      message: toPresentationText(payload && payload.message ? payload.message : ""),
+      description,
+      limitations,
+      report: payload && payload.report ? toPresentationText(payload.report, true) : buildCharacterizationReport(enrichedPayload),
+      facts,
+      supportNote
+    };
+  }
+
+  function buildCurrentModuleDebugSnapshot(moduleKey = state.activeModule) {
+    const cid = resolveCurrentCid();
+    const cidDescription = resolveCurrentCidDescription(moduleKey);
+
+    if (moduleKey === "fisica") {
+      return {
+        module: moduleKey,
+        cid,
+        cidDescription,
+        conditionType: valueOf("physicalConditionType"),
+        segment: resolvePhysicalSegment(),
+        laterality: resolveEffectivePhysicalLaterality(),
+        permanent: valueOf("physicalPermanent"),
+        impactGrade: valueOf("physicalImpactGrade"),
+        functionalMarkers: checkedLabels("physicalFunctionItem")
+      };
+    }
+
+    if (moduleKey === "auditiva") {
+      return {
+        module: moduleKey,
+        cid,
+        cidDescription,
+        withoutAid: valueOf("audioWithoutAid"),
+        impactGrade: valueOf("audioImpactGrade"),
+        odAverage: getAudiometryAverage("OD"),
+        oeAverage: getAudiometryAverage("OE"),
+        impactMarkers: checkedLabels("audioImpactMarker")
+      };
+    }
+
+    if (moduleKey === "visual") {
+      return {
+        module: moduleKey,
+        cid,
+        cidDescription,
+        condition: typeof getEffectiveVisualCondition === "function"
+          ? getEffectiveVisualCondition()
+          : valueOf("visualPrimaryFinding"),
+        laterality: valueOf("visualLaterality"),
+        permanent: valueOf("visualPermanent"),
+        acuityOD: valueOf("visualAcuityOD"),
+        acuityOE: valueOf("visualAcuityOE"),
+        fieldChanged: valueOf("visualFieldChanged"),
+        fieldExtent: valueOf("visualFieldExtent"),
+        impactGrade: valueOf("visualImpactGrade"),
+        limitations: checkedLabels("visualMarker")
+      };
+    }
+
+    return {
+      module: moduleKey,
+      cid,
+      cidDescription
+    };
+  }
+
+  function evaluateCurrentModule() {
+    if (isCompanySession() || !state.activeModule) {
+      return;
+    }
+
+    const engineMap = {
+      auditiva: evaluateAuditory,
+      fisica: evaluatePhysical,
+      clinicas: evaluateClinical,
+      visual: evaluateVisual,
+      intelectual: evaluateIntellectual,
+      psicossocial: evaluatePsychosocial
+    };
+
+    const evaluator = engineMap[state.activeModule];
+    if (typeof evaluator !== "function") {
+      console.warn("[pcd-debug] Nenhum avaliador disponivel para o modulo.", state.activeModule);
+      return;
+    }
+
+    const snapshot = buildCurrentModuleDebugSnapshot(state.activeModule);
+    console.groupCollapsed(`[pcd-debug] avaliacao ${state.activeModule}`);
+    console.info("entrada", snapshot);
+
+    const result = evaluator();
+
+    console.info("resultado", {
+      status: result && result.status ? result.status : "desconhecido",
+      title: result && result.title ? result.title : "",
+      message: result && result.message ? result.message : "",
+      supportNote: result && result.supportNote ? result.supportNote : "",
+      facts: result && Array.isArray(result.facts) ? result.facts : []
+    });
+    console.groupEnd();
+
+    renderResult(result);
+  }
+
+  async function handlePdfDownload() {
+    const context = getLaudoActionContext();
+    if (!context) {
+      return;
+    }
+
+    setPdfActionStatus("Preparando pacote de impressao do laudo...");
+
+    try {
+      await ensureCidDescriptionResolvedForModule();
+      const attachments = context.printFiles.length ? await buildAttachmentPayloads(context.printFiles) : [];
+      const pdfPayload = buildPdfPayload(context.identity, state.lastResult, attachments);
+      const openedPrintView = await openOfficialPrintPreview(pdfPayload);
+
+      if (!openedPrintView) {
+        cleanupAttachmentPayloads(attachments);
+        const message = "O navegador bloqueou a abertura da janela de impressao. Permita pop-ups desta pagina e tente novamente.";
+        setPdfActionStatus(message);
+        window.alert(message);
+        return;
+      }
+
+      await registerLaudoUsageOnce(context.identity);
+      setPdfActionStatus(context.printFiles.length
+        ? "Janela de impressao aberta com o laudo e os anexos vinculados."
+        : "Janela de impressao aberta com sucesso.");
+    } catch (error) {
+      console.error(error);
+      const message = `Nao foi possivel preparar o pacote final de impressao neste momento.${error && error.message ? `\n\nDetalhe tecnico: ${toPresentationText(error.message)}` : ""}`;
+      setPdfActionStatus(message.replace(/\n+/g, " "));
+      window.alert(message);
+    }
+  }
+
+  function getExistingCidStatusNode(moduleKey) {
+    const definition = getCidFieldDefinition(moduleKey);
+    if (!definition) {
+      return null;
+    }
+    return document.getElementById(`${definition.descriptionId}Status`);
+  }
+
+  function hideInactiveCidStatusNotes(activeModuleKey = state.activeModule) {
+    Object.keys(CID_FIELD_DEFINITION_MAP).forEach((moduleKey) => {
+      if (moduleKey === activeModuleKey) {
+        return;
+      }
+
+      const note = getExistingCidStatusNode(moduleKey);
+      if (note) {
+        note.textContent = "";
+      }
+    });
+  }
+
+  function setCidStatusMessage(moduleKey, message = "", tone = "info") {
+    const note = ensureCidStatusNode(moduleKey);
+    if (!note) {
+      return;
+    }
+
+    const isActiveModule = !moduleKey || moduleKey === state.activeModule;
+    note.textContent = isActiveModule ? (message || "") : "";
+    note.dataset.tone = tone;
+    note.style.color = {
+      success: "var(--success)",
+      warning: "var(--warning)",
+      error: "var(--danger)",
+      info: "var(--text-soft)"
+    }[tone] || "var(--text-soft)";
+  }
+
+  function syncAllCidDescriptionFields(options = {}) {
+    const moduleKeys = options.allModules
+      ? Object.keys(CID_FIELD_DEFINITION_MAP)
+      : [options.moduleKey || state.activeModule].filter(Boolean);
+
+    moduleKeys.forEach((moduleKey) => {
+      syncCidDescriptionField(moduleKey, options);
+    });
+
+    hideInactiveCidStatusNotes(options.allModules ? (options.moduleKey || state.activeModule) : (options.moduleKey || state.activeModule));
+  }
+
+  function buildOfficialDescriptionText(payload) {
+    const explicit = normalizePdfTextValue(
+      payload && payload.description
+        ? payload.description
+        : payload && payload.result && payload.result.description
+          ? payload.result.description
+          : ""
+    );
+
+    if (explicit) {
+      return ensurePrintSentence(explicit);
+    }
+
+    const cid = toPresentationText(formatCid(resolveCurrentCid(), resolveCurrentCidDescription())) || "Não informado";
+    const cidText = hasInformativeCidText(cid) ? ` (CID ${cid})` : "";
+    const impactSummary = stripTerminalPunctuation(buildCurrentFunctionalImpactSummary());
+    const occupationalImpact = stripTerminalPunctuation(buildCurrentOccupationalImpactText());
+
+    if (state.activeModule === "auditiva") {
+      const odAverage = getAudiometryAverage("OD");
+      const oeAverage = getAudiometryAverage("OE");
+      const rightTotal = isTotalHearingLossEar(["audioOD500", "audioOD1000", "audioOD2000", "audioOD3000"].map(numberOf));
+      const leftTotal = isTotalHearingLossEar(["audioOE500", "audioOE1000", "audioOE2000", "audioOE3000"].map(numberOf));
+
+      if (rightTotal || leftTotal) {
+        const side = rightTotal ? "direita" : "esquerda";
+        return ensurePrintSentence(`Trata-se de colaborador que apresenta deficiência auditiva permanente, com surdez unilateral total em orelha ${side}, comprovada por audiometria sem uso de aparelho auditivo e médias de ${formatDecimal(odAverage)} dB em OD e ${formatDecimal(oeAverage)} dB em OE${cidText}, apresentando ${impactSummary}, com impacto direto em ${occupationalImpact}.`);
+      }
+
+      return ensurePrintSentence(`Trata-se de colaborador que apresenta deficiência auditiva permanente, comprovada por audiometria sem uso de aparelho auditivo, com perda auditiva bilateral parcial e médias aritméticas de ${formatDecimal(odAverage)} dB em OD e ${formatDecimal(oeAverage)} dB em OE, aferidas nas frequências de 500 Hz, 1000 Hz, 2000 Hz e 3000 Hz${cidText}, apresentando ${impactSummary}, com impacto direto em ${occupationalImpact}.`);
+    }
+
+    if (state.activeModule === "fisica") {
+      const choiceKey = normalizedChoiceKey(valueOf("physicalConditionType"));
+      const scope = valueOf("physicalAmputationScope");
+      const laterality = resolveEffectivePhysicalLaterality();
+      const segmentText = choiceKey.includes("amput")
+        ? toPresentationText(composeAmputationFinding(scope, laterality, collectAmputationDetail(), valueOf("physicalAmputationLevel")))
+        : toPresentationText(composeSegment(resolvePhysicalSegment(), laterality));
+      const originText = buildPhysicalOriginNarrative();
+
+      if (choiceKey.includes("amput")) {
+        return ensurePrintSentence(`Trata-se de colaborador que apresenta amputação com repercussão funcional em ${segmentText}${cidText}, ${originText}, apresentando ${impactSummary}, com impacto direto em ${occupationalImpact}.`);
+      }
+
+      const conditionText = lowerFirstPresentation(labelForSelectValue("physicalConditionType") || "alteração física permanente");
+      return ensurePrintSentence(`Trata-se de colaborador que apresenta ${conditionText} em ${segmentText}${cidText}, ${originText}, apresentando ${impactSummary}, com impacto direto em ${occupationalImpact}.`);
+    }
+
+    if (state.activeModule === "visual") {
+      return ensurePrintSentence(`Trata-se de colaborador que apresenta deficiência visual permanente, com ${buildOfficialVisualSummary()}${cidText}, apresentando ${impactSummary}, com impacto direto em ${occupationalImpact}.`);
+    }
+
+    if (state.activeModule === "clinicas") {
+      const condition = lowerFirstPresentation(labelForSelectValue("clinicalCondition") || normalizedText("clinicalCondition") || "condição clínica persistente");
+      const grade = lowerFirstPresentation(labelForSelectValue("clinicalLimitationGrade") || valueOf("clinicalLimitationGrade") || "relevante");
+      return ensurePrintSentence(`Trata-se de colaborador que apresenta condição clínica persistente compatível com ${condition}${cidText}, associada a limitação funcional de intensidade ${grade}, apresentando ${impactSummary}, com impacto direto em ${occupationalImpact}.`);
+    }
+
+    if (state.activeModule === "intelectual") {
+      const supportNeed = lowerFirstPresentation(labelForSelectValue("intellectualSupportNeed") || "relevante");
+      return ensurePrintSentence(`Trata-se de colaborador que apresenta deficiência intelectual permanente${cidText}, com comprometimento do funcionamento intelectual e das habilidades adaptativas, demandando suporte ${supportNeed} e apresentando ${impactSummary}, com impacto direto em ${occupationalImpact}.`);
+    }
+
+    if (state.activeModule === "psicossocial") {
+      const condition = lowerFirstPresentation(labelForSelectValue("psychosocialCondition") || normalizedText("psychosocialCondition") || "quadro mental ou psicossocial persistente");
+      return ensurePrintSentence(`Trata-se de colaborador que apresenta ${condition}${cidText}, com restrição persistente de participação social e laboral, apresentando ${impactSummary}, com impacto direto em ${occupationalImpact}.`);
+    }
+
+    return ensurePrintSentence(toPresentationText(payload && payload.result ? payload.result.description : ""));
+  }
+
+  function buildOfficialLimitationsText(payload) {
+    const explicit = normalizePdfTextValue(
+      payload && payload.limitations
+        ? payload.limitations
+        : payload && payload.result && payload.result.limitations
+          ? payload.result.limitations
+          : ""
+    );
+
+    if (explicit) {
+      return ensurePrintSentence(explicit);
+    }
+
+    const summary = stripTerminalPunctuation(buildCurrentFunctionalImpactSummary());
+    const occupationalImpact = stripTerminalPunctuation(buildCurrentOccupationalImpactText());
+
+    if (summary) {
+      return ensurePrintSentence(`Apresenta ${summary}, com impacto ocupacional em ${occupationalImpact}`);
+    }
+
+    return ensurePrintSentence(payload && payload.result ? payload.result.limitations : payload && payload.limitations ? payload.limitations : "");
+  }
+
+  init();
   bindCidDescriptionFields();
+
+  window.__PCD_DEBUG__ = {
+    evaluateCurrentModule,
+    setActiveModule,
+    getLastResult: () => state.lastResult ? {
+      status: state.lastResult.status,
+      title: state.lastResult.title,
+      message: state.lastResult.message,
+      description: state.lastResult.description || "",
+      limitations: state.lastResult.limitations || "",
+      supportNote: state.lastResult.supportNote || ""
+    } : null,
+    resolveCurrentCid: () => ({
+      code: resolveCurrentCid(),
+      description: resolveCurrentCidDescription()
+    }),
+    getSnapshot: () => buildCurrentModuleDebugSnapshot(state.activeModule),
+    ensureCidDescriptionResolvedForModule
+  };
+
 };
 
 if (document.readyState === "loading") {
